@@ -1,0 +1,8 @@
+/**
+ * layouts/
+ *
+ * Layout wrapper components that define the page structure.
+ * Examples: MainLayout (with Navbar + Footer),
+ *           AuthLayout (centered card for login/register),
+ *           AdminLayout (with sidebar navigation).
+ */

@@ -1,0 +1,9 @@
+/**
+ * assets/
+ *
+ * Static assets used throughout the application.
+ * Sub-directories (to be created as needed):
+ *   images/  — hotel photos, logo, hero images
+ *   icons/   — SVG icons
+ *   fonts/   — custom font files (if not using Google Fonts CDN)
+ */

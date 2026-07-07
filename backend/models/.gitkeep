@@ -1,0 +1,9 @@
+/**
+ * models/
+ *
+ * This directory will hold all database model files.
+ * Each model file will contain SQL queries and data-access
+ * logic for a specific entity (e.g., User, Room, Booking).
+ *
+ * Models will be added in subsequent development phases.
+ */

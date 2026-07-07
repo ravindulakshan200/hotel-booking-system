@@ -1,0 +1,7 @@
+/**
+ * pages/
+ *
+ * Top-level page components rendered by React Router.
+ * Examples: HomePage, LoginPage, RegisterPage, RoomsPage,
+ *           BookingPage, DashboardPage, AdminPage, etc.
+ */

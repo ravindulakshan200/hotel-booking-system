@@ -1,0 +1,8 @@
+/**
+ * context/
+ *
+ * React Context providers for global state management.
+ * Examples:
+ *   AuthContext.js  — authenticated user, login/logout actions
+ *   ThemeContext.js — light/dark theme toggle
+ */

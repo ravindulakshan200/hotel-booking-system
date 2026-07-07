@@ -1,0 +1,10 @@
+/**
+ * routes/
+ *
+ * Centralized React Router configuration.
+ * Defines public routes, protected routes, and role-based routing.
+ *
+ * Examples:
+ *   AppRouter.js       — main router with all route definitions
+ *   ProtectedRoute.js  — wrapper that redirects unauthenticated users
+ */

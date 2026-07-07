@@ -1,0 +1,11 @@
+/**
+ * services/
+ *
+ * Axios API service modules — one file per resource.
+ * Each service encapsulates all HTTP calls for a given entity.
+ *
+ * Examples:
+ *   authService.js    — login, register, logout
+ *   roomService.js    — get rooms, get room by ID
+ *   bookingService.js — create, update, cancel bookings
+ */

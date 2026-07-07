@@ -1,0 +1,9 @@
+/**
+ * utils/
+ *
+ * This directory contains shared utility/helper functions
+ * that are reused across the application.
+ *
+ * Examples: token generators, response formatters, validators, etc.
+ * Utilities will be added in subsequent development phases.
+ */

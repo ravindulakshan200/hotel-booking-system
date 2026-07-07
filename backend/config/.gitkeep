@@ -1,0 +1,12 @@
+/**
+ * config/
+ *
+ * This directory holds configuration modules for the application.
+ *
+ * Examples:
+ *   - JWT configuration
+ *   - Email service configuration
+ *   - Third-party API configurations
+ *
+ * Config files will be added in subsequent development phases.
+ */
