@@ -27,9 +27,16 @@ const Navbar = () => {
               <Link className="nav-link" to="/hotels">Hotels</Link>
             </li>
             {user && (
-              <li className="nav-item">
-                <Link className="nav-link" to="/my-bookings">My Bookings</Link>
-              </li>
+              <>
+                <li className="nav-item">
+                  <Link className="nav-link" to="/my-bookings">My Bookings</Link>
+                </li>
+                {user.role === 'admin' && (
+                  <li className="nav-item">
+                    <Link className="nav-link" to="/admin">Admin</Link>
+                  </li>
+                )}
+              </>
             )}
           </ul>
           <ul className="navbar-nav ms-auto align-items-center">

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import LoadingSpinner from '../components/LoadingSpinner';
 import { getMyBookings, cancelBooking } from '../services/bookingService';
 
 const MyBookings = () => {
@@ -37,7 +38,7 @@ const MyBookings = () => {
     }
   };
 
-  if (loading) return <div className="container mt-5 text-center">Loading...</div>;
+  if (loading) return <div className="container mt-5"><LoadingSpinner message="Loading your bookings..." /></div>;
   if (error) return <div className="container mt-5 alert alert-danger">{error}</div>;
 
   return (
@@ -47,7 +48,12 @@ const MyBookings = () => {
       
       <h2 className="mb-4">My Bookings</h2>
       {bookings.length === 0 ? (
-        <p>You have no bookings yet.</p>
+        <div className="card shadow-sm border-0">
+          <div className="card-body text-center py-5">
+            <h4 className="fw-bold">No bookings yet</h4>
+            <p className="text-muted mb-0">Start exploring hotels and make your first reservation.</p>
+          </div>
+        </div>
       ) : (
         <div className="table-responsive">
           <table className="table table-bordered table-hover align-middle">

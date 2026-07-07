@@ -51,6 +51,11 @@ export const getAllBookings = async (params = '') => {
   return response.data;
 };
 
+export const updateBookingStatus = async (id, status) => {
+  const response = await api.patch(`/admin/bookings/${id}/status`, { status });
+  return response.data;
+};
+
 export const getAllReviewsAdmin = async () => {
   const response = await api.get('/reviews');
   return response.data;

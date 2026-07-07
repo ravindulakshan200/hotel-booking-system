@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import AdminLayout from '../layouts/AdminLayout';
-import LoadingSpinner from '../components/LoadingSpinner';
-import { getDashboardStats } from '../services/adminService';
+import AdminLayout from '../../layouts/AdminLayout';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import { getDashboardStats } from '../../services/adminService';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
