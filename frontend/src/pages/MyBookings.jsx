@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { getMyBookings, cancelBooking } from '../services/bookingService';
+import { formatCurrency } from '../utils/formatters';
 
 const MyBookings = () => {
   const location = useLocation();
@@ -15,7 +16,7 @@ const MyBookings = () => {
   const fetchBookings = async () => {
     try {
       const response = await getMyBookings();
-      setBookings(response.data.bookings || []);
+      setBookings(response.data?.data?.bookings || []);
     } catch (err) {
       setError('Failed to fetch bookings');
     } finally {
@@ -94,7 +95,7 @@ const MyBookings = () => {
                           <div><i className="bi bi-box-arrow-right text-danger me-1"></i> {new Date(booking.check_out).toLocaleDateString()}</div>
                         </div>
                       </td>
-                      <td className="py-3 fw-bold text-accent">${booking.total_price}</td>
+                      <td className="py-3 fw-bold text-accent">{formatCurrency(booking.total_price)}</td>
                       <td className="py-3">
                         <span className={`status-badge ${booking.booking_status === 'confirmed' ? 'success' : booking.booking_status === 'cancelled' ? 'danger' : 'info'}`}>
                           {booking.booking_status}

@@ -18,7 +18,7 @@ const AdminHotels = () => {
   const fetchHotels = async () => {
     try {
       const response = await getHotels();
-      setHotels(response.data.hotels || []);
+      setHotels(response.data?.data?.hotels || []);
     } catch (err) {
       setError('Failed to load hotels.');
     } finally {

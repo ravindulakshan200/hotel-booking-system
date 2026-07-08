@@ -11,7 +11,7 @@ const AdminReviews = () => {
   const fetchReviews = async () => {
     try {
       const response = await getAllReviewsAdmin();
-      setReviews(response.data.reviews || []);
+      setReviews(response.data?.data?.reviews || []);
     } catch (err) {
       setError('Failed to load reviews.');
     } finally {

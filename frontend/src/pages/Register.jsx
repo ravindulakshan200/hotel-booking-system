@@ -3,8 +3,9 @@ import { useNavigate, Link } from 'react-router-dom';
 import { register as registerService } from '../services/authService';
 
 const Register = () => {
-  const [formData, setFormData] = useState({ first_name: '', last_name: '', email: '', password: '' });
+  const [formData, setFormData] = useState({ first_name: '', last_name: '', email: '', password: '', phone: '' });
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const navigate = useNavigate();
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -12,9 +13,11 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     try {
       await registerService(formData);
-      navigate('/login');
+      setSuccess('Account created successfully. Please sign in.');
+      setTimeout(() => navigate('/login'), 800);
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed');
     }
@@ -32,6 +35,7 @@ const Register = () => {
               </div>
               
               {error && <div className="alert alert-danger" style={{ borderRadius: '10px' }}><i className="bi bi-exclamation-circle-fill me-2"></i>{error}</div>}
+              {success && <div className="alert alert-success" style={{ borderRadius: '10px' }}><i className="bi bi-check-circle-fill me-2"></i>{success}</div>}
               
               <form onSubmit={handleSubmit}>
                 <div className="row">
@@ -47,6 +51,10 @@ const Register = () => {
                 <div className="mb-3">
                   <label className="form-label">Email Address</label>
                   <input type="email" name="email" required className="form-control" placeholder="john@example.com" value={formData.email} onChange={handleChange} />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Phone Number</label>
+                  <input type="tel" name="phone" className="form-control" placeholder="Optional" value={formData.phone} onChange={handleChange} />
                 </div>
                 <div className="mb-4">
                   <label className="form-label">Password</label>

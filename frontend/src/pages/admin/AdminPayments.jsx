@@ -11,7 +11,7 @@ const AdminPayments = () => {
   const fetchPayments = async () => {
     try {
       const response = await getAllPayments();
-      setPayments(response.data.payments || []);
+      setPayments(response.data?.data?.payments || []);
     } catch (err) {
       setError('Failed to load payments.');
     } finally {
@@ -51,7 +51,7 @@ const AdminPayments = () => {
                     <td>#{p.id}</td>
                     <td>{p.first_name} {p.last_name}</td>
                     <td>{p.hotel_name}</td>
-                    <td>${p.amount}</td>
+                    <td className="fw-bold">LKR {Number(p.amount).toLocaleString()}</td>
                     <td className="text-capitalize">{p.payment_method}</td>
                     <td><span className={`badge bg-${p.payment_status === 'completed' ? 'success' : p.payment_status === 'refunded' ? 'warning' : 'secondary'}`}>{p.payment_status}</span></td>
                     <td><small>{p.transaction_reference}</small></td>

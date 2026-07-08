@@ -13,8 +13,8 @@ const AdminDashboard = () => {
     const fetchStats = async () => {
       try {
         const response = await getDashboardStats();
-        setStats(response.data.stats);
-        setRecentBookings(response.data.recentBookings || []);
+        setStats(response.data?.data?.stats);
+        setRecentBookings(response.data?.data?.recentBookings || []);
       } catch (err) {
         setError('Failed to load dashboard data.');
       } finally {
@@ -34,7 +34,7 @@ const AdminDashboard = () => {
     { label: 'Total Bookings', value: stats.total_bookings, icon: 'bi-calendar-check', color: 'warning' },
     { label: 'Confirmed', value: stats.confirmed_bookings, icon: 'bi-check-circle', color: 'success' },
     { label: 'Pending', value: stats.pending_bookings, icon: 'bi-hourglass-split', color: 'secondary' },
-    { label: 'Revenue', value: `$${parseFloat(stats.total_revenue).toFixed(2)}`, icon: 'bi-cash-coin', color: 'accent' },
+    { label: 'Revenue', value: `LKR ${Number(stats.total_revenue).toLocaleString()}`, icon: 'bi-cash-coin', color: 'accent' },
     { label: 'Reviews', value: stats.total_reviews, icon: 'bi-star', color: 'primary' },
   ];
 
@@ -87,7 +87,7 @@ const AdminDashboard = () => {
                       <small className="text-muted">Room {b.room_number}</small>
                     </td>
                     <td className="py-3 text-muted">{new Date(b.check_in).toLocaleDateString()}</td>
-                    <td className="py-3 fw-bold">${b.total_price}</td>
+                    <td className="py-3 fw-bold">LKR {Number(b.total_price).toLocaleString()}</td>
                     <td className="pe-4 py-3">
                       <span className={`status-badge ${b.booking_status === 'confirmed' ? 'success' : b.booking_status === 'pending' ? 'warning' : 'info'}`}>
                         {b.booking_status}

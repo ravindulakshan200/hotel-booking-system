@@ -13,7 +13,7 @@ const AdminUsers = () => {
     const fetchUsers = async () => {
       try {
         const response = await getAllUsers(roleFilter);
-        setUsers(response.data.users || []);
+        setUsers(response.data?.data?.users || []);
       } catch (err) {
         setError('Failed to load users.');
       } finally {

@@ -22,8 +22,8 @@ const AdminRooms = () => {
   const fetchData = async () => {
     try {
       const [roomsRes, hotelsRes] = await Promise.all([getAllRooms(), getHotels()]);
-      setRooms(roomsRes.data.rooms || []);
-      setHotels(hotelsRes.data.hotels || []);
+      setRooms(roomsRes.data?.data?.rooms || []);
+      setHotels(hotelsRes.data?.data?.hotels || []);
     } catch (err) {
       setError('Failed to load rooms.');
     } finally {
@@ -101,7 +101,7 @@ const AdminRooms = () => {
                     <td>{getHotelName(r.hotel_id)}</td>
                     <td>{r.room_number}</td>
                     <td className="text-capitalize">{r.room_type}</td>
-                    <td>${r.price_per_night}</td>
+                    <td>LKR {Number(r.price_per_night).toLocaleString()}</td>
                     <td>{r.capacity}</td>
                     <td><span className={`badge bg-${r.availability_status === 'available' ? 'success' : 'secondary'}`}>{r.availability_status}</span></td>
                     <td>
@@ -149,7 +149,7 @@ const AdminRooms = () => {
                   </div>
                   <div className="row">
                     <div className="col-6 mb-3">
-                      <label className="form-label">Price/Night ($)</label>
+                      <label className="form-label">Price/Night (LKR)</label>
                       <input type="number" step="0.01" min="0" className="form-control" required value={form.price_per_night} onChange={(e) => setForm({ ...form, price_per_night: e.target.value })} />
                     </div>
                     <div className="col-6 mb-3">

@@ -286,49 +286,77 @@ INSERT INTO users (first_name, last_name, email, password, phone, role) VALUES
 
 INSERT INTO hotels (name, address, city, description) VALUES
   (
-    'The Grand Azure',
-    '12 Oceanfront Boulevard',
-    'Miami',
-    'A luxury beachfront resort offering breathtaking ocean views, world-class dining, and premium amenities steps from the shore.'
+    'Galle Face Hotel',
+    '2 Galle Road, Colombo 3',
+    'Colombo',
+    'A heritage luxury hotel offering breathtaking ocean views, colonial charm, and premium amenities steps from the Galle Face Green.'
   ),
   (
-    'Summit Peak Lodge',
-    '88 Mountain Trail Road',
-    'Aspen',
-    'An elegant mountain retreat featuring cozy fireside suites, ski-in/ski-out access, and panoramic Alpine scenery.'
+    'Earls Regency',
+    'Tennekumbura, Kandy',
+    'Kandy',
+    'An elegant mountain retreat featuring cozy suites, infinity pools, and panoramic views of the Mahaweli River.'
   ),
   (
-    'Metropolitan Suites',
-    '450 Fifth Avenue, Midtown',
-    'New York',
-    'A sleek urban hotel at the heart of Midtown Manhattan, offering modern suites, a rooftop lounge, and city skyline views.'
+    'The Fortress Resort',
+    'Koggala, Galle',
+    'Galle',
+    'A sleek boutique hotel modeled after a Dutch fort, offering luxurious spa treatments and direct beach access.'
+  ),
+  (
+    '98 Acres Resort',
+    'Greenland Estate, Ella',
+    'Ella',
+    'Eco-friendly luxury resort nestled among scenic tea estates with stunning views of the Ella Gap.'
+  ),
+  (
+    'Heritance Kandalama',
+    'Kandalama, Dambulla',
+    'Sigiriya',
+    'An architectural masterpiece blending into the jungle, overlooking the Kandalama Lake and Sigiriya Rock Fortress.'
+  ),
+  (
+    'Taj Bentota Resort',
+    'National Holiday Resort, Bentota',
+    'Bentota',
+    'A luxury beach resort offering water sports, fine dining, and beautiful sunset views over the Indian Ocean.'
   );
 
 
 -- -----------------------------------------------------------------------------
--- Seed: rooms (10 rooms across 3 hotels)
--- hotel_id 1 = The Grand Azure (Miami)      — 4 rooms
--- hotel_id 2 = Summit Peak Lodge (Aspen)    — 3 rooms
--- hotel_id 3 = Metropolitan Suites (NYC)    — 3 rooms
+-- Seed: rooms (16 rooms across 6 hotels)
+-- Prices are in LKR
 -- -----------------------------------------------------------------------------
 
 INSERT INTO rooms (hotel_id, room_number, room_type, price_per_night, capacity, availability_status, image_url) VALUES
 
-  -- The Grand Azure — Miami (hotel_id = 1)
-  (1, '101', 'single',  89.00,  1, 'available', NULL),
-  (1, '102', 'double', 149.00,  2, 'available', NULL),
-  (1, '201', 'deluxe', 249.00,  3, 'available', NULL),
-  (1, '301', 'suite',  499.00,  4, 'available', NULL),
+  -- Galle Face Hotel — Colombo (hotel_id = 1)
+  (1, '101', 'single',  25000.00, 1, 'available', NULL),
+  (1, '102', 'double',  35000.00, 2, 'available', NULL),
+  (1, '201', 'deluxe',  55000.00, 3, 'available', NULL),
+  (1, '301', 'suite',   85000.00, 4, 'available', NULL),
 
-  -- Summit Peak Lodge — Aspen (hotel_id = 2)
-  (2, '101', 'single', 120.00,  1, 'available', NULL),
-  (2, '201', 'double', 210.00,  2, 'available', NULL),
-  (2, '301', 'suite',  580.00,  4, 'available', NULL),
+  -- Earls Regency — Kandy (hotel_id = 2)
+  (2, '101', 'single',  18000.00, 1, 'available', NULL),
+  (2, '201', 'double',  28000.00, 2, 'available', NULL),
+  (2, '301', 'suite',   65000.00, 4, 'available', NULL),
 
-  -- Metropolitan Suites — New York (hotel_id = 3)
-  (3, 'A101', 'single', 175.00, 1, 'available', NULL),
-  (3, 'A201', 'double', 320.00, 2, 'available', NULL),
-  (3, 'PH01', 'suite',  950.00, 6, 'available', NULL);
+  -- The Fortress Resort — Galle (hotel_id = 3)
+  (3, 'A101', 'single', 30000.00, 1, 'available', NULL),
+  (3, 'A201', 'double', 45000.00, 2, 'available', NULL),
+  (3, 'PH01', 'suite',  95000.00, 6, 'available', NULL),
+  
+  -- 98 Acres — Ella (hotel_id = 4)
+  (4, 'E101', 'double', 40000.00, 2, 'available', NULL),
+  (4, 'E102', 'deluxe', 60000.00, 3, 'available', NULL),
+  
+  -- Heritance Kandalama (hotel_id = 5)
+  (5, 'K101', 'double', 35000.00, 2, 'available', NULL),
+  (5, 'K201', 'suite',  75000.00, 4, 'available', NULL),
+
+  -- Taj Bentota (hotel_id = 6)
+  (6, 'B101', 'double', 32000.00, 2, 'available', NULL),
+  (6, 'B201', 'deluxe', 52000.00, 3, 'available', NULL);
 
 
 -- =============================================================================
@@ -397,10 +425,12 @@ CREATE TABLE IF NOT EXISTS favorites (
 -- -----------------------------------------------------------------------------
 
 INSERT INTO reviews (user_id, hotel_id, rating, comment) VALUES
-  (2, 1, 5, 'Absolutely stunning ocean views and exceptional service. Will definitely return!'),
-  (3, 1, 4, 'Great location and comfortable rooms. Breakfast could be better.'),
-  (2, 2, 5, 'Perfect ski getaway. Cozy rooms and amazing mountain scenery.'),
-  (3, 3, 4, 'Excellent location in Midtown. Rooms are modern and well-appointed.');
+  (2, 1, 5, 'Absolutely stunning ocean views at Galle Face. The colonial charm is unmatched!'),
+  (3, 1, 4, 'Great location in Colombo and very comfortable rooms. Breakfast spread was amazing.'),
+  (2, 2, 5, 'Perfect getaway in Kandy. Cozy rooms and amazing views of the Mahaweli River.'),
+  (3, 3, 5, 'Excellent stay in Galle. The architecture is beautiful and the beach is pristine.'),
+  (2, 4, 5, 'The views from 98 Acres are breathtaking. Best place to stay in Ella!'),
+  (3, 5, 4, 'Heritance Kandalama is a marvel. Monkeys on the balcony were fun but slightly scary!');
 
 
 -- =============================================================================

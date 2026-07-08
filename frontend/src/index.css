@@ -1,22 +1,25 @@
 /**
- * Global Base Styles
- * These styles complement Bootstrap and define project-wide CSS custom properties.
- * Designed for a modern, premium, portfolio-ready aesthetic (2026).
+ * Global Base Styles — Ceylon Stays
+ * Sri Lanka-focused Premium Hotel Booking System
+ * Modern, portfolio-ready aesthetic (2026).
  */
 
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;1,600&display=swap');
+@import url('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css');
 
 /* ─── CSS Custom Properties (Design Tokens) ─── */
 :root {
-  /* Brand Colors */
+  /* Brand Colors — Ceylon Stays Sri Lanka palette */
   --color-primary: #0b2239;      /* Deep midnight blue */
   --color-primary-light: #1a426e;
   --color-accent: #d4af37;       /* Metallic gold */
   --color-accent-light: #e6c55c;
   --color-accent-dark: #b5952f;
+  --color-emerald: #006b3c;      /* Sri Lanka emerald green */
+  --color-emerald-light: #00a05a;
 
   /* Neutrals */
-  --color-bg: #f4f7f6;           /* Soft grey-blue background */
+  --color-bg: #f4f7f6;
   --color-surface: #ffffff;
   --color-text: #1d2126;
   --color-text-muted: #64748b;
@@ -26,6 +29,7 @@
   --color-success: #10b981;
   --color-warning: #f59e0b;
   --color-danger: #ef4444;
+  --color-info: #3b82f6;
 
   /* Typography */
   --font-family-sans: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -430,36 +434,195 @@ label.form-label {
   background: #f1f5f9;
 }
 .admin-sidebar {
-  width: 280px;
-  background: var(--color-primary);
+  width: 260px;
+  min-width: 260px;
+  background: linear-gradient(180deg, var(--color-primary) 0%, #0d2d4a 100%);
   color: white;
   padding: 2rem 1rem;
   display: flex;
   flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+.admin-sidebar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 3px;
+  height: 100%;
+  background: linear-gradient(180deg, var(--color-accent), var(--color-emerald));
 }
 .admin-sidebar .nav-link {
-  color: rgba(255,255,255,0.7);
-  padding: 1rem 1.5rem;
+  color: rgba(255,255,255,0.65);
+  padding: 0.85rem 1.25rem;
   border-radius: var(--border-radius-sm);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.35rem;
   display: flex;
   align-items: center;
   gap: 10px;
   font-weight: 500;
+  font-size: 0.9rem;
   transition: all var(--transition-fast);
 }
+.admin-sidebar .nav-link i {
+  font-size: 1rem;
+  min-width: 1.2rem;
+}
 .admin-sidebar .nav-link:hover, .admin-sidebar .nav-link.active {
-  background: rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.12);
   color: #fff;
   transform: translateX(5px);
+  border-right: 3px solid var(--color-accent);
 }
 .admin-content {
   flex: 1;
   padding: 2rem;
   overflow-y: auto;
+  min-width: 0;
 }
 .stat-card {
   border-left: 4px solid var(--color-accent);
+}
+
+/* Admin Mobile */
+@media (max-width: 768px) {
+  .admin-layout {
+    flex-direction: column;
+  }
+  .admin-sidebar {
+    width: 100%;
+    min-width: auto;
+    padding: 1rem;
+  }
+  .admin-sidebar nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    flex-direction: row !important;
+  }
+  .admin-sidebar .nav-link {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    flex: 1;
+    min-width: 100px;
+    text-align: center;
+    justify-content: center;
+    transform: none !important;
+    border-right: none !important;
+  }
+  .admin-content {
+    padding: 1rem;
+  }
+}
+
+/* ─── Footer ─── */
+.site-footer {
+  background: linear-gradient(135deg, var(--color-primary) 0%, #0d2d4a 100%);
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+.site-footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-accent), var(--color-emerald), var(--color-accent));
+}
+.footer-links li {
+  margin-bottom: 0.5rem;
+}
+.footer-links a {
+  color: rgba(255,255,255,0.55);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color var(--transition-fast);
+}
+.footer-links a:hover {
+  color: var(--color-accent);
+}
+
+/* ─── Color utilities ─── */
+.text-accent { color: var(--color-accent) !important; }
+.text-emerald { color: var(--color-emerald) !important; }
+.bg-accent { background-color: var(--color-accent) !important; }
+.bg-emerald { background-color: var(--color-emerald) !important; }
+
+/* ─── LKR Price Badge ─── */
+.price-lkr {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--color-accent);
+  font-family: var(--font-family-serif);
+}
+.price-lkr-sm {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+/* ─── Destination Cards ─── */
+.destination-card {
+  position: relative;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  height: 220px;
+  background-size: cover;
+  background-position: center;
+  cursor: pointer;
+  transition: transform var(--transition-base);
+}
+.destination-card:hover {
+  transform: scale(1.03);
+}
+.destination-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 30%, rgba(0,0,0,0.75) 100%);
+}
+.destination-card-label {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  z-index: 2;
+  color: white;
+  font-weight: 700;
+  font-size: 1.1rem;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+}
+
+/* ─── Review Stars ─── */
+.star-rating {
+  color: var(--color-accent);
+  font-size: 1rem;
+  letter-spacing: 1px;
+}
+.review-card {
+  border-left: 3px solid var(--color-accent);
+  padding-left: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+/* ─── Payment Method Cards ─── */
+.payment-option {
+  border: 2px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  padding: 1rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+}
+.payment-option:hover, .payment-option.selected {
+  border-color: var(--color-primary);
+  background: rgba(11, 34, 57, 0.04);
+}
+.payment-option.selected {
+  border-color: var(--color-accent);
+  background: rgba(212, 175, 55, 0.08);
 }
 
 /* ─── Animations ─── */

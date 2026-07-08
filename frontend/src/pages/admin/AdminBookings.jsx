@@ -16,7 +16,7 @@ const AdminBookings = () => {
       setLoading(true);
       const params = statusFilter ? `booking_status=${statusFilter}` : '';
       const response = await getAllBookings(params);
-      setBookings(response.data.bookings || []);
+      setBookings(response.data?.data?.bookings || []);
     } catch (err) {
       setError('Failed to load bookings.');
     } finally {
@@ -73,7 +73,7 @@ const AdminBookings = () => {
                     <td>{b.room_number}</td>
                     <td>{new Date(b.check_in).toLocaleDateString()}</td>
                     <td>{new Date(b.check_out).toLocaleDateString()}</td>
-                    <td>${b.total_price}</td>
+                    <td className="fw-bold">LKR {Number(b.total_price).toLocaleString()}</td>
                     <td>
                       <select
                         className="form-select form-select-sm"
