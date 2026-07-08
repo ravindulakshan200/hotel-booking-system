@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import AdminLayout from '../../layouts/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { getDashboardStats } from '../../services/adminService';
+import { formatCurrency } from '../../utils/formatters';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
@@ -34,7 +35,7 @@ const AdminDashboard = () => {
     { label: 'Total Bookings', value: stats.total_bookings, icon: 'bi-calendar-check', color: 'warning' },
     { label: 'Confirmed', value: stats.confirmed_bookings, icon: 'bi-check-circle', color: 'success' },
     { label: 'Pending', value: stats.pending_bookings, icon: 'bi-hourglass-split', color: 'secondary' },
-    { label: 'Revenue', value: `LKR ${Number(stats.total_revenue).toLocaleString()}`, icon: 'bi-cash-coin', color: 'accent' },
+    { label: 'Revenue', value: formatCurrency(stats.total_revenue), icon: 'bi-cash-coin', color: 'accent' },
     { label: 'Reviews', value: stats.total_reviews, icon: 'bi-star', color: 'primary' },
   ];
 
@@ -87,7 +88,7 @@ const AdminDashboard = () => {
                       <small className="text-muted">Room {b.room_number}</small>
                     </td>
                     <td className="py-3 text-muted">{new Date(b.check_in).toLocaleDateString()}</td>
-                    <td className="py-3 fw-bold">LKR {Number(b.total_price).toLocaleString()}</td>
+                    <td className="py-3 fw-bold">{formatCurrency(b.total_price)}</td>
                     <td className="pe-4 py-3">
                       <span className={`status-badge ${b.booking_status === 'confirmed' ? 'success' : b.booking_status === 'pending' ? 'warning' : 'info'}`}>
                         {b.booking_status}

@@ -275,9 +275,9 @@ CREATE TABLE IF NOT EXISTS payments (
 -- -----------------------------------------------------------------------------
 
 INSERT INTO users (first_name, last_name, email, password, phone, role) VALUES
-  ('Super', 'Admin',    'admin@hotelbooking.com',    '$2a$10$EpnTMSfnmY7R9QjAzl.h8.0VpSgo67KApLKexnief9NWZSYBvZEOe',    '+1-000-000-0001', 'admin'),
-  ('John',  'Doe',      'john.doe@example.com',      '$2a$10$6kSkkl0zUCnq1CtkBnR4uO2tqUUYm9Ot7JPYOaZTQAyxQvF5mo85K', '+1-555-100-2001', 'customer'),
-  ('Jane',  'Smith',    'jane.smith@example.com',     '$2a$10$6kSkkl0zUCnq1CtkBnR4uO2tqUUYm9Ot7JPYOaZTQAyxQvF5mo85K', '+1-555-100-2002', 'customer');
+  ('Super', 'Admin',    'admin@hotelbooking.com',    '$2a$10$EpnTMSfnmY7R9QjAzl.h8.0VpSgo67KApLKexnief9NWZSYBvZEOe',    '+94 77 100 0001', 'admin'),
+  ('John',  'Doe',      'john.doe@example.com',      '$2a$10$6kSkkl0zUCnq1CtkBnR4uO2tqUUYm9Ot7JPYOaZTQAyxQvF5mo85K', '+94 71 555 2001', 'customer'),
+  ('Jane',  'Smith',    'jane.smith@example.com',     '$2a$10$6kSkkl0zUCnq1CtkBnR4uO2tqUUYm9Ot7JPYOaZTQAyxQvF5mo85K', '+94 76 555 2002', 'customer');
 
 
 -- -----------------------------------------------------------------------------
@@ -286,40 +286,40 @@ INSERT INTO users (first_name, last_name, email, password, phone, role) VALUES
 
 INSERT INTO hotels (name, address, city, description) VALUES
   (
-    'Galle Face Hotel',
-    '2 Galle Road, Colombo 3',
+    'Ceylon Grand Hotel',
+    '2 Galle Face Green, Colombo 03',
     'Colombo',
-    'A heritage luxury hotel offering breathtaking ocean views, colonial charm, and premium amenities steps from the Galle Face Green.'
+    'A refined heritage stay overlooking the Indian Ocean, featuring elegant interiors, sea-facing dining, and easy access to Colombo’s cultural landmarks.'
   ),
   (
-    'Earls Regency',
-    'Tennekumbura, Kandy',
+    'Hillview Estate Retreat',
+    'Tennekumbura, Kandy 20000',
     'Kandy',
-    'An elegant mountain retreat featuring cozy suites, infinity pools, and panoramic views of the Mahaweli River.'
+    'A serene highland retreat with misty views, private balconies, and warm Sri Lankan hospitality near the Temple of the Tooth Relic.'
   ),
   (
-    'The Fortress Resort',
-    'Koggala, Galle',
+    'The Fort Breeze',
+    'No. 14, Lighthouse Street, Galle 80000',
     'Galle',
-    'A sleek boutique hotel modeled after a Dutch fort, offering luxurious spa treatments and direct beach access.'
+    'A boutique stay inspired by the old Dutch fort, combining colonial character with modern comfort and easy access to the coast.'
   ),
   (
-    '98 Acres Resort',
-    'Greenland Estate, Ella',
+    'Ella Tea Haven',
+    'Greenland Estate, Ella 90090',
     'Ella',
-    'Eco-friendly luxury resort nestled among scenic tea estates with stunning views of the Ella Gap.'
+    'A peaceful eco-luxury hideaway surrounded by tea plantations, rainforests, and some of Sri Lanka’s most iconic scenic viewpoints.'
   ),
   (
-    'Heritance Kandalama',
-    'Kandalama, Dambulla',
+    'Kandalama Heritage Lodge',
+    'Kandalama, Dambulla 21100',
     'Sigiriya',
-    'An architectural masterpiece blending into the jungle, overlooking the Kandalama Lake and Sigiriya Rock Fortress.'
+    'An architectural landmark hidden in lush jungle, perfect for travellers seeking wildlife, history, and panoramic rock views.'
   ),
   (
-    'Taj Bentota Resort',
-    'National Holiday Resort, Bentota',
+    'Ocean Breeze Bentota',
+    'National Holiday Resort, Bentota 80500',
     'Bentota',
-    'A luxury beach resort offering water sports, fine dining, and beautiful sunset views over the Indian Ocean.'
+    'A polished beach resort with spacious villas, water activities, and warm sunset views across the golden shoreline.'
   );
 
 
@@ -425,12 +425,12 @@ CREATE TABLE IF NOT EXISTS favorites (
 -- -----------------------------------------------------------------------------
 
 INSERT INTO reviews (user_id, hotel_id, rating, comment) VALUES
-  (2, 1, 5, 'Absolutely stunning ocean views at Galle Face. The colonial charm is unmatched!'),
-  (3, 1, 4, 'Great location in Colombo and very comfortable rooms. Breakfast spread was amazing.'),
-  (2, 2, 5, 'Perfect getaway in Kandy. Cozy rooms and amazing views of the Mahaweli River.'),
-  (3, 3, 5, 'Excellent stay in Galle. The architecture is beautiful and the beach is pristine.'),
-  (2, 4, 5, 'The views from 98 Acres are breathtaking. Best place to stay in Ella!'),
-  (3, 5, 4, 'Heritance Kandalama is a marvel. Monkeys on the balcony were fun but slightly scary!');
+  (2, 1, 5, 'The ocean view from Colombo was spectacular and the service felt genuinely warm and professional.'),
+  (3, 1, 4, 'Perfect base for a city break with easy access to Galle Face and nearby dining spots.'),
+  (2, 2, 5, 'The Kandy retreat was peaceful, beautifully styled, and ideal for a slow weekend away.'),
+  (3, 3, 5, 'A charming stay in Galle with lovely architecture and a calm coastal atmosphere.'),
+  (2, 4, 5, 'Ella Tea Haven felt like a hidden paradise with breathtaking mountain views.'),
+  (3, 5, 4, 'Kandalama Heritage Lodge was unforgettable, especially for the jungle scenery and historic setting.');
 
 
 -- =============================================================================

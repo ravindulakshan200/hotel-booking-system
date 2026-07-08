@@ -78,7 +78,7 @@ const Hotels = () => {
           </span>
           <h1 className="font-serif fw-bold display-4 mb-3 text-white">Explore All Destinations</h1>
           <p className="lead opacity-75 text-white mx-auto" style={{ maxWidth: '600px' }}>
-            Discover our curated collection of premium hotels across Sri Lanka's most beautiful cities.
+            Discover premium stays along the coast, in the highlands, and around the island's cultural heartlands.
           </p>
 
           {/* Search + Filter Bar */}

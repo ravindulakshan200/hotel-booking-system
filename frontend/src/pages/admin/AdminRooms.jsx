@@ -3,6 +3,7 @@ import AdminLayout from '../../layouts/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { getHotels } from '../../services/hotelService';
 import { getAllRooms, createRoom, updateRoom, deleteRoom } from '../../services/adminService';
+import { formatCurrency } from '../../utils/formatters';
 
 const emptyForm = {
   hotel_id: '', room_number: '', room_type: 'single',
@@ -101,7 +102,7 @@ const AdminRooms = () => {
                     <td>{getHotelName(r.hotel_id)}</td>
                     <td>{r.room_number}</td>
                     <td className="text-capitalize">{r.room_type}</td>
-                    <td>LKR {Number(r.price_per_night).toLocaleString()}</td>
+                    <td>{formatCurrency(r.price_per_night)}</td>
                     <td>{r.capacity}</td>
                     <td><span className={`badge bg-${r.availability_status === 'available' ? 'success' : 'secondary'}`}>{r.availability_status}</span></td>
                     <td>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import AdminLayout from '../../layouts/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { getAllPayments, refundPayment } from '../../services/paymentService';
+import { formatCurrency } from '../../utils/formatters';
 
 const AdminPayments = () => {
   const [payments, setPayments] = useState([]);
@@ -51,7 +52,7 @@ const AdminPayments = () => {
                     <td>#{p.id}</td>
                     <td>{p.first_name} {p.last_name}</td>
                     <td>{p.hotel_name}</td>
-                    <td className="fw-bold">LKR {Number(p.amount).toLocaleString()}</td>
+                    <td className="fw-bold">{formatCurrency(p.amount)}</td>
                     <td className="text-capitalize">{p.payment_method}</td>
                     <td><span className={`badge bg-${p.payment_status === 'completed' ? 'success' : p.payment_status === 'refunded' ? 'warning' : 'secondary'}`}>{p.payment_status}</span></td>
                     <td><small>{p.transaction_reference}</small></td>

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getHotelById } from '../services/hotelService';
 import { getRoomsByHotel } from '../services/roomService';
 import { getHotelReviews } from '../services/reviewService';
+import { formatCurrency } from '../utils/formatters';
 
 const HotelDetails = () => {
   const { id } = useParams();
@@ -131,7 +132,7 @@ const HotelDetails = () => {
                       <div className="d-flex justify-content-between align-items-end mt-auto pt-3">
                         <div>
                           <span className="fs-6 text-muted d-block mb-1">Price per night</span>
-                          <span className="fs-3 fw-bold text-accent font-serif">LKR {Number(room.price_per_night).toLocaleString()}</span>
+                          <span className="fs-3 fw-bold text-accent font-serif">{formatCurrency(room.price_per_night)}</span>
                         </div>
                         <button 
                           className="btn btn-primary px-4 btn-lg rounded-pill shadow-sm" 
@@ -191,11 +192,11 @@ const HotelDetails = () => {
                 </li>
                 <li className="mb-3 d-flex align-items-center">
                   <i className="bi bi-telephone-fill me-3 text-accent fs-5"></i> 
-                  <span className="opacity-90">+94 11 234 5678</span>
+                  <span className="opacity-90">+94 77 123 4567</span>
                 </li>
                 <li className="mb-0 d-flex align-items-center">
                   <i className="bi bi-envelope-fill me-3 text-accent fs-5"></i> 
-                  <span className="opacity-90">contact@ceylonstays.lk</span>
+                  <span className="opacity-90">reservations@ceylonstays.lk</span>
                 </li>
               </ul>
             </div>

@@ -57,8 +57,8 @@ const Home = () => {
             Your Perfect Stay<br />Awaits in Lanka
           </h1>
           <p className="hero-subtitle slide-up delay-200">
-            From coastal resorts in Galle to misty mountain retreats in Ella.<br />
-            Experience the pearl of the Indian Ocean.
+            From sunlit beaches in Bentota to misty tea-country escapes in Ella.<br />
+            Discover the pearl of the Indian Ocean with effortless island stays.
           </p>
 
           <form onSubmit={handleSearch} className="slide-up delay-300">
@@ -118,7 +118,7 @@ const Home = () => {
           <div className="text-center mb-5">
             <span className="text-accent fw-bold text-uppercase" style={{ letterSpacing: '2px', fontSize: '0.85rem' }}>Explore by Destination</span>
             <h2 className="fw-bold font-serif mt-2" style={{ fontSize: '2.2rem' }}>Popular Sri Lanka Destinations</h2>
-            <p className="text-muted">From ancient kingdoms to pristine coastlines — find your perfect escape.</p>
+            <p className="text-muted">From ancient kingdoms to golden beaches — discover your perfect island escape.</p>
           </div>
           <div className="row g-3">
             {SL_DESTINATIONS.map((dest, i) => (
@@ -143,7 +143,7 @@ const Home = () => {
           <div className="text-center mb-5">
             <span className="text-accent fw-bold text-uppercase" style={{ letterSpacing: '2px', fontSize: '0.85rem' }}>Top Picks</span>
             <h2 className="fw-bold font-serif mt-2" style={{ fontSize: '2.2rem' }}>Featured Properties</h2>
-            <p className="text-muted">Highly-rated hotels loved by our guests across the island.</p>
+            <p className="text-muted">Highly-rated stays loved by travellers across Sri Lanka.</p>
           </div>
 
           {loading ? (

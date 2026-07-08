@@ -2,6 +2,7 @@ import React, { useEffect, useCallback, useState } from 'react';
 import AdminLayout from '../../layouts/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { getAllBookings, updateBookingStatus } from '../../services/adminService';
+import { formatCurrency } from '../../utils/formatters';
 
 const AdminBookings = () => {
   const [bookings, setBookings] = useState([]);
@@ -73,7 +74,7 @@ const AdminBookings = () => {
                     <td>{b.room_number}</td>
                     <td>{new Date(b.check_in).toLocaleDateString()}</td>
                     <td>{new Date(b.check_out).toLocaleDateString()}</td>
-                    <td className="fw-bold">LKR {Number(b.total_price).toLocaleString()}</td>
+                    <td className="fw-bold">{formatCurrency(b.total_price)}</td>
                     <td>
                       <select
                         className="form-select form-select-sm"
