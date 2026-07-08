@@ -12,39 +12,53 @@ const AdminLayout = ({ children, title }) => {
   };
 
   const navLinkClass = ({ isActive }) =>
-    `admin-nav-link list-group-item list-group-item-action ${isActive ? 'active' : ''}`;
+    `nav-link ${isActive ? 'active' : ''}`;
 
   return (
-    <div className="admin-layout">
-      <div className="container-fluid">
-        <div className="row">
-          <aside className="col-lg-2 col-md-3 admin-sidebar p-0">
-            <div className="p-4 border-bottom border-secondary">
-              <Link to="/" className="text-white text-decoration-none fw-bold">
-                🏨 Admin Panel
-              </Link>
-              <p className="text-white-50 small mb-0 mt-1">{user?.first_name} {user?.last_name}</p>
+    <div className="admin-layout fade-in">
+      {/* Sidebar */}
+      <aside className="admin-sidebar sticky-top h-100" style={{ maxHeight: '100vh', overflowY: 'auto' }}>
+        <div className="mb-5 text-center px-3">
+          <Link to="/" className="text-white text-decoration-none d-flex flex-column align-items-center">
+            <div className="bg-accent rounded-circle d-flex align-items-center justify-content-center mb-3 shadow-sm" style={{ width: '60px', height: '60px' }}>
+              <span className="fs-3">🏨</span>
             </div>
-            <nav className="list-group list-group-flush">
-              <NavLink to="/admin" end className={navLinkClass}>Dashboard</NavLink>
-              <NavLink to="/admin/hotels" className={navLinkClass}>Hotels</NavLink>
-              <NavLink to="/admin/rooms" className={navLinkClass}>Rooms</NavLink>
-              <NavLink to="/admin/bookings" className={navLinkClass}>Bookings</NavLink>
-              <NavLink to="/admin/users" className={navLinkClass}>Customers</NavLink>
-              <NavLink to="/admin/payments" className={navLinkClass}>Payments</NavLink>
-              <NavLink to="/admin/reviews" className={navLinkClass}>Reviews</NavLink>
-            </nav>
-            <div className="p-3 mt-3">
-              <Link to="/" className="btn btn-outline-light btn-sm w-100 mb-2">View Site</Link>
-              <button className="btn btn-danger btn-sm w-100" onClick={handleLogout}>Logout</button>
-            </div>
-          </aside>
-          <main className="col-lg-10 col-md-9 admin-main">
-            {title && <h2 className="fw-bold mb-4">{title}</h2>}
-            {children}
-          </main>
+            <h4 className="font-serif fw-bold mb-0">Admin Portal</h4>
+          </Link>
+          <p className="text-white opacity-75 small mt-2 mb-0">Welcome, {user?.first_name}</p>
         </div>
-      </div>
+        
+        <nav className="d-flex flex-column gap-2 mb-auto">
+          <NavLink to="/admin" end className={navLinkClass}><i className="bi bi-speedometer2 text-accent"></i> Dashboard</NavLink>
+          <NavLink to="/admin/hotels" className={navLinkClass}><i className="bi bi-building text-accent"></i> Hotels</NavLink>
+          <NavLink to="/admin/rooms" className={navLinkClass}><i className="bi bi-door-open text-accent"></i> Rooms</NavLink>
+          <NavLink to="/admin/bookings" className={navLinkClass}><i className="bi bi-calendar-check text-accent"></i> Bookings</NavLink>
+          <NavLink to="/admin/users" className={navLinkClass}><i className="bi bi-people text-accent"></i> Customers</NavLink>
+          <NavLink to="/admin/payments" className={navLinkClass}><i className="bi bi-credit-card text-accent"></i> Payments</NavLink>
+          <NavLink to="/admin/reviews" className={navLinkClass}><i className="bi bi-star text-accent"></i> Reviews</NavLink>
+        </nav>
+        
+        <div className="mt-5 pt-4 border-top border-secondary">
+          <Link to="/" className="btn btn-outline-light w-100 mb-3 rounded-pill">View Public Site</Link>
+          <button className="btn btn-danger w-100 rounded-pill" onClick={handleLogout}>Log Out</button>
+        </div>
+      </aside>
+      
+      {/* Main Content */}
+      <main className="admin-content bg-light">
+        <div className="container-fluid py-2">
+          {title && (
+            <div className="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+              <h2 className="font-serif fw-bold text-primary mb-0">{title}</h2>
+              <div className="d-flex align-items-center bg-white px-4 py-2 rounded-pill shadow-sm">
+                <span className="text-muted fw-bold me-2">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</span>
+                <i className="bi bi-calendar3 text-primary"></i>
+              </div>
+            </div>
+          )}
+          {children}
+        </div>
+      </main>
     </div>
   );
 };

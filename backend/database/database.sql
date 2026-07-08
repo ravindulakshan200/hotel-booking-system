@@ -275,7 +275,7 @@ CREATE TABLE IF NOT EXISTS payments (
 -- -----------------------------------------------------------------------------
 
 INSERT INTO users (first_name, last_name, email, password, phone, role) VALUES
-  ('Super', 'Admin',    'admin@hotelbooking.com',    '$2a$10$K0hO40TY3s2CwauA5XEMyeCSMhcupTw7tv93Ol2.jtHGvLrZA80bG',    '+1-000-000-0001', 'admin'),
+  ('Super', 'Admin',    'admin@hotelbooking.com',    '$2a$10$EpnTMSfnmY7R9QjAzl.h8.0VpSgo67KApLKexnief9NWZSYBvZEOe',    '+1-000-000-0001', 'admin'),
   ('John',  'Doe',      'john.doe@example.com',      '$2a$10$6kSkkl0zUCnq1CtkBnR4uO2tqUUYm9Ot7JPYOaZTQAyxQvF5mo85K', '+1-555-100-2001', 'customer'),
   ('Jane',  'Smith',    'jane.smith@example.com',     '$2a$10$6kSkkl0zUCnq1CtkBnR4uO2tqUUYm9Ot7JPYOaZTQAyxQvF5mo85K', '+1-555-100-2002', 'customer');
 

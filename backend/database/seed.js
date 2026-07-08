@@ -9,7 +9,7 @@ const bcrypt = require("bcryptjs");
 const pool = require("../config/db");
 
 const SEED_USERS = [
-  { email: "admin@hotelbooking.com", password: "Admin@123" },
+  { email: "admin@hotelbooking.com", password: "password123" },
   { email: "john.doe@example.com", password: "Customer@123" },
   { email: "jane.smith@example.com", password: "Customer@123" },
 ];

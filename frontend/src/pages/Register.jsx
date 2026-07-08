@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { register as registerService } from '../services/authService';
 
 const Register = () => {
@@ -21,32 +21,43 @@ const Register = () => {
   };
 
   return (
-    <div className="container mt-5">
-      <div className="row justify-content-center">
-        <div className="col-md-6">
-          <div className="card shadow">
-            <div className="card-body">
-              <h2 className="text-center mb-4">Register</h2>
-              {error && <div className="alert alert-danger">{error}</div>}
+    <div className="fullscreen-bg fade-in">
+      <div className="container auth-container">
+        <div className="row justify-content-center">
+          <div className="col-md-5">
+            <div className="glass-card p-5 slide-up">
+              <div className="text-center mb-4">
+                <h2 className="font-serif fw-bold text-primary">Create Account</h2>
+                <p className="text-muted">Join us to book your perfect stay</p>
+              </div>
+              
+              {error && <div className="alert alert-danger" style={{ borderRadius: '10px' }}><i className="bi bi-exclamation-circle-fill me-2"></i>{error}</div>}
+              
               <form onSubmit={handleSubmit}>
-                <div className="mb-3">
-                  <label className="form-label">First Name</label>
-                  <input type="text" name="first_name" required className="form-control" value={formData.first_name} onChange={handleChange} />
+                <div className="row">
+                  <div className="col-md-6 mb-3">
+                    <label className="form-label">First Name</label>
+                    <input type="text" name="first_name" required className="form-control" placeholder="John" value={formData.first_name} onChange={handleChange} />
+                  </div>
+                  <div className="col-md-6 mb-3">
+                    <label className="form-label">Last Name</label>
+                    <input type="text" name="last_name" required className="form-control" placeholder="Doe" value={formData.last_name} onChange={handleChange} />
+                  </div>
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">Last Name</label>
-                  <input type="text" name="last_name" required className="form-control" value={formData.last_name} onChange={handleChange} />
+                  <label className="form-label">Email Address</label>
+                  <input type="email" name="email" required className="form-control" placeholder="john@example.com" value={formData.email} onChange={handleChange} />
                 </div>
-                <div className="mb-3">
-                  <label className="form-label">Email</label>
-                  <input type="email" name="email" required className="form-control" value={formData.email} onChange={handleChange} />
-                </div>
-                <div className="mb-3">
+                <div className="mb-4">
                   <label className="form-label">Password</label>
-                  <input type="password" name="password" required className="form-control" value={formData.password} onChange={handleChange} />
+                  <input type="password" name="password" required className="form-control" placeholder="Create a password" value={formData.password} onChange={handleChange} />
                 </div>
-                <button type="submit" className="btn btn-primary w-100">Register</button>
+                <button type="submit" className="btn btn-primary w-100 btn-lg mb-3">Register</button>
               </form>
+              
+              <div className="text-center mt-4">
+                <p className="text-muted mb-0">Already have an account? <Link to="/login" className="fw-bold" style={{ color: 'var(--color-primary)' }}>Login here</Link></p>
+              </div>
             </div>
           </div>
         </div>

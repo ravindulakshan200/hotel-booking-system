@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { getMyBookings, cancelBooking } from '../services/bookingService';
 
@@ -38,67 +38,88 @@ const MyBookings = () => {
     }
   };
 
-  if (loading) return <div className="container mt-5"><LoadingSpinner message="Loading your bookings..." /></div>;
-  if (error) return <div className="container mt-5 alert alert-danger">{error}</div>;
+  if (loading) return <div className="container py-5"><LoadingSpinner message="Loading your bookings..." /></div>;
+  if (error) return <div className="container py-5 alert alert-danger glass-card p-4"><i className="bi bi-exclamation-triangle-fill me-2"></i>{error}</div>;
 
   return (
-    <div className="container mt-5">
-      {successMessage && <div className="alert alert-success alert-dismissible fade show">{successMessage}</div>}
-      {actionError && <div className="alert alert-danger">{actionError}</div>}
-      
-      <h2 className="mb-4">My Bookings</h2>
-      {bookings.length === 0 ? (
-        <div className="card shadow-sm border-0">
-          <div className="card-body text-center py-5">
-            <h4 className="fw-bold">No bookings yet</h4>
-            <p className="text-muted mb-0">Start exploring hotels and make your first reservation.</p>
+    <div className="page-wrapper fade-in" style={{ backgroundColor: 'var(--color-bg)' }}>
+      <div className="container py-5">
+        
+        {successMessage && <div className="alert alert-success alert-dismissible fade show slide-up"><i className="bi bi-check-circle-fill me-2"></i>{successMessage}</div>}
+        {actionError && <div className="alert alert-danger slide-up"><i className="bi bi-exclamation-triangle-fill me-2"></i>{actionError}</div>}
+        
+        <div className="d-flex justify-content-between align-items-end mb-4 slide-up">
+          <div>
+            <h1 className="font-serif fw-bold text-primary mb-1">My Bookings</h1>
+            <p className="text-muted mb-0">Manage your upcoming and past stays.</p>
           </div>
+          <Link to="/hotels" className="btn btn-outline-primary d-none d-md-inline-block">Book Another Stay</Link>
         </div>
-      ) : (
-        <div className="table-responsive">
-          <table className="table table-bordered table-hover align-middle">
-            <thead className="table-light">
-              <tr>
-                <th>Booking ID</th>
-                <th>Hotel</th>
-                <th>Room</th>
-                <th>Check-In</th>
-                <th>Check-Out</th>
-                <th>Total Price</th>
-                <th>Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bookings.map(booking => (
-                <tr key={booking.id}>
-                  <td>#{booking.id}</td>
-                  <td>{booking.hotel_name || 'N/A'}</td>
-                  <td>{booking.room_number || booking.room_id}</td>
-                  <td>{new Date(booking.check_in).toLocaleDateString()}</td>
-                  <td>{new Date(booking.check_out).toLocaleDateString()}</td>
-                  <td>${booking.total_price}</td>
-                  <td>
-                    <span className={`badge bg-${booking.booking_status === 'confirmed' ? 'success' : booking.booking_status === 'cancelled' ? 'danger' : 'secondary'}`}>
-                      {booking.booking_status}
-                    </span>
-                  </td>
-                  <td>
-                    {booking.booking_status !== 'cancelled' && booking.booking_status !== 'completed' && (
-                      <button 
-                        className="btn btn-sm btn-outline-danger"
-                        onClick={() => handleCancel(booking.id)}
-                      >
-                        Cancel
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+
+        {bookings.length === 0 ? (
+          <div className="glass-card slide-up delay-100 p-5 text-center my-4">
+            <div className="mb-4 text-muted" style={{ fontSize: '4rem' }}><i className="bi bi-calendar-x"></i></div>
+            <h3 className="font-serif fw-bold text-primary mb-3">No bookings yet</h3>
+            <p className="text-muted mb-4 fs-5">Start exploring our premium destinations and make your first reservation.</p>
+            <Link to="/hotels" className="btn btn-primary btn-lg px-5">Explore Hotels</Link>
+          </div>
+        ) : (
+          <div className="modern-card slide-up delay-100 border-0 p-0 overflow-hidden">
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0" style={{ borderCollapse: 'collapse' }}>
+                <thead className="bg-light text-muted">
+                  <tr>
+                    <th className="py-4 ps-4 border-bottom-0 text-uppercase" style={{ fontSize: '0.85rem', letterSpacing: '0.5px' }}>Booking ID</th>
+                    <th className="py-4 border-bottom-0 text-uppercase" style={{ fontSize: '0.85rem', letterSpacing: '0.5px' }}>Hotel</th>
+                    <th className="py-4 border-bottom-0 text-uppercase" style={{ fontSize: '0.85rem', letterSpacing: '0.5px' }}>Room</th>
+                    <th className="py-4 border-bottom-0 text-uppercase" style={{ fontSize: '0.85rem', letterSpacing: '0.5px' }}>Dates</th>
+                    <th className="py-4 border-bottom-0 text-uppercase" style={{ fontSize: '0.85rem', letterSpacing: '0.5px' }}>Total Price</th>
+                    <th className="py-4 border-bottom-0 text-uppercase" style={{ fontSize: '0.85rem', letterSpacing: '0.5px' }}>Status</th>
+                    <th className="py-4 pe-4 border-bottom-0 text-uppercase text-end" style={{ fontSize: '0.85rem', letterSpacing: '0.5px' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bookings.map(booking => (
+                    <tr key={booking.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                      <td className="ps-4 py-3 text-muted">#{booking.id}</td>
+                      <td className="py-3">
+                        <span className="fw-bold text-primary d-block">{booking.hotel_name || 'N/A'}</span>
+                      </td>
+                      <td className="py-3">
+                        <span className="text-muted">Room {booking.room_number || booking.room_id}</span>
+                      </td>
+                      <td className="py-3">
+                        <div className="text-muted" style={{ fontSize: '0.9rem' }}>
+                          <div><i className="bi bi-box-arrow-in-right text-success me-1"></i> {new Date(booking.check_in).toLocaleDateString()}</div>
+                          <div><i className="bi bi-box-arrow-right text-danger me-1"></i> {new Date(booking.check_out).toLocaleDateString()}</div>
+                        </div>
+                      </td>
+                      <td className="py-3 fw-bold text-accent">${booking.total_price}</td>
+                      <td className="py-3">
+                        <span className={`status-badge ${booking.booking_status === 'confirmed' ? 'success' : booking.booking_status === 'cancelled' ? 'danger' : 'info'}`}>
+                          {booking.booking_status}
+                        </span>
+                      </td>
+                      <td className="pe-4 py-3 text-end">
+                        {booking.booking_status !== 'cancelled' && booking.booking_status !== 'completed' ? (
+                          <button 
+                            className="btn btn-sm btn-outline-danger px-3 rounded-pill"
+                            onClick={() => handleCancel(booking.id)}
+                          >
+                            Cancel
+                          </button>
+                        ) : (
+                          <span className="text-muted" style={{ fontSize: '0.85rem' }}>N/A</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
