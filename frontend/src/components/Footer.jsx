@@ -50,9 +50,8 @@ const Footer = () => (
             <li><i className="bi bi-envelope-fill me-2 text-accent"></i>info@ceylonstays.lk</li>
           </ul>
           <div className="bg-white bg-opacity-10 rounded p-3">
-            <p className="text-white-50 small fw-bold mb-1">🔑 Demo Credentials</p>
-            <p className="text-white-50 small mb-1">Admin: admin@hotelbooking.com</p>
-            <p className="text-white-50 small mb-0">Password: password123</p>
+            <p className="text-white-50 small fw-bold mb-1">Portfolio Demo</p>
+            <p className="text-white-50 small mb-0">No real payments are processed.</p>
           </div>
         </div>
       </div>

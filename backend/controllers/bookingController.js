@@ -1,64 +1,71 @@
-/**
- * controllers/bookingController.js
- *
- * Handles all Booking HTTP requests.
- */
-
 const Booking = require("../models/Booking");
-const Room = require("../models/Room");
+const Payment = require("../models/Payment");
+const { validateBookingInput } = require("../utils/validators");
+
+const VALID_PAYMENT_METHODS = ["card", "cash", "online"];
+const VALID_BOOKING_STATUSES = ["pending", "confirmed", "cancelled", "completed"];
+
+const parseId = (value) => {
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? id : null;
+};
 
 const createBooking = async (req, res, next) => {
   try {
-    const { room_id, check_in, check_out } = req.body;
-    const user_id = req.user.id;
-
-    if (!room_id || !check_in || !check_out) {
-      return res.status(400).json({ success: false, message: "room_id, check_in, and check_out are required." });
+    const { valid, errors } = validateBookingInput(req.body);
+    if (!valid) {
+      return res.status(400).json({ success: false, message: "Validation failed.", errors });
     }
 
-    const checkInDate = new Date(check_in);
-    const checkOutDate = new Date(check_out);
-
-    if (isNaN(checkInDate) || isNaN(checkOutDate)) {
-      return res.status(400).json({ success: false, message: "Invalid date format." });
-    }
-
-    if (checkOutDate <= checkInDate) {
-      return res.status(400).json({ success: false, message: "check_out must be after check_in." });
-    }
-
-    // Validate room exists
-    const room = await Room.findById(room_id);
-    if (!room) {
-      return res.status(404).json({ success: false, message: "Room not found." });
-    }
-
-    // Validate room availability
-    const isAvailable = await Booking.isRoomAvailable(room_id, check_in, check_out);
-    if (!isAvailable) {
-      return res.status(409).json({ success: false, message: "Room is not available for the selected dates." });
-    }
-
-    // Calculate total price
-    const timeDifference = checkOutDate.getTime() - checkInDate.getTime();
-    const days = Math.ceil(timeDifference / (1000 * 3600 * 24));
-    const total_price = (room.price_per_night * days).toFixed(2);
-
-    const newBookingId = await Booking.create({
-      user_id,
-      room_id,
-      check_in,
-      check_out,
-      total_price,
-      booking_status: 'pending'
+    const bookingId = await Booking.createWithAvailability({
+      user_id: req.user.id,
+      room_id: Number(req.body.room_id),
+      check_in: req.body.check_in,
+      check_out: req.body.check_out,
     });
-
-    const newBooking = await Booking.findById(newBookingId);
+    const booking = await Booking.findById(bookingId);
 
     return res.status(201).json({
       success: true,
-      message: "Booking created successfully.",
-      data: { booking: newBooking }
+      message: "Booking created and is awaiting payment.",
+      data: { booking },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const checkoutBooking = async (req, res, next) => {
+  try {
+    const { valid, errors } = validateBookingInput(req.body);
+    if (!valid) {
+      return res.status(400).json({ success: false, message: "Validation failed.", errors });
+    }
+
+    const { payment_method } = req.body;
+    if (!VALID_PAYMENT_METHODS.includes(payment_method)) {
+      return res.status(400).json({
+        success: false,
+        message: "payment_method must be one of: card, cash, online.",
+      });
+    }
+
+    const result = await Booking.checkoutDemo({
+      user_id: req.user.id,
+      room_id: Number(req.body.room_id),
+      check_in: req.body.check_in,
+      check_out: req.body.check_out,
+      payment_method,
+    });
+    const [booking, payment] = await Promise.all([
+      Booking.findById(result.bookingId),
+      Payment.findById(result.paymentId),
+    ]);
+
+    return res.status(201).json({
+      success: true,
+      message: "Demo booking confirmed. No real payment was processed.",
+      data: { booking, payment, payment_mode: "demo" },
     });
   } catch (error) {
     next(error);
@@ -71,7 +78,7 @@ const getMyBookings = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: bookings.length > 0 ? "Bookings fetched successfully." : "No bookings found.",
-      data: { count: bookings.length, bookings }
+      data: { count: bookings.length, bookings },
     });
   } catch (error) {
     next(error);
@@ -80,24 +87,22 @@ const getMyBookings = async (req, res, next) => {
 
 const getBookingById = async (req, res, next) => {
   try {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id) || id < 1) {
-      return res.status(400).json({ success: false, message: "Invalid booking ID." });
-    }
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: "Invalid booking ID." });
 
     const booking = await Booking.findById(id);
-    if (!booking) {
-      return res.status(404).json({ success: false, message: "Booking not found." });
-    }
-
-    if (req.user.role !== 'admin' && booking.user_id !== req.user.id) {
-      return res.status(403).json({ success: false, message: "Access denied. You do not own this booking." });
+    if (!booking) return res.status(404).json({ success: false, message: "Booking not found." });
+    if (req.user.role !== "admin" && booking.user_id !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. You do not own this booking.",
+      });
     }
 
     return res.status(200).json({
       success: true,
       message: "Booking fetched successfully.",
-      data: { booking }
+      data: { booking },
     });
   } catch (error) {
     next(error);
@@ -106,35 +111,22 @@ const getBookingById = async (req, res, next) => {
 
 const cancelBooking = async (req, res, next) => {
   try {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id) || id < 1) {
-      return res.status(400).json({ success: false, message: "Invalid booking ID." });
-    }
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: "Invalid booking ID." });
 
+    const result = await Booking.cancelAtomic(id, {
+      actorUserId: req.user.id,
+      isAdmin: req.user.role === "admin",
+    });
     const booking = await Booking.findById(id);
-    if (!booking) {
-      return res.status(404).json({ success: false, message: "Booking not found." });
-    }
-
-    if (req.user.role !== 'admin' && booking.user_id !== req.user.id) {
-      return res.status(403).json({ success: false, message: "Access denied. You do not own this booking." });
-    }
-
-    if (booking.booking_status === 'cancelled') {
-      return res.status(400).json({ success: false, message: "Booking is already cancelled." });
-    }
-
-    if (booking.booking_status === 'completed') {
-      return res.status(400).json({ success: false, message: "Cannot cancel a completed booking." });
-    }
-
-    await Booking.updateStatus(id, 'cancelled');
-    const updatedBooking = await Booking.findById(id);
 
     return res.status(200).json({
       success: true,
-      message: "Booking cancelled successfully.",
-      data: { booking: updatedBooking }
+      message:
+        result.refundedPayments > 0
+          ? "Booking cancelled and demo payment marked as refunded."
+          : "Booking cancelled successfully.",
+      data: { booking, refunded_payments: result.refundedPayments },
     });
   } catch (error) {
     next(error);
@@ -143,13 +135,22 @@ const cancelBooking = async (req, res, next) => {
 
 const getAllBookings = async (req, res, next) => {
   try {
-    const { user_id, room_id, booking_status } = req.query;
-    const bookings = await Booking.findAll({ user_id, room_id, booking_status });
+    const { user_id, room_id, booking_status, search } = req.query;
+    if (booking_status && !VALID_BOOKING_STATUSES.includes(booking_status)) {
+      return res.status(400).json({ success: false, message: "Invalid booking_status filter." });
+    }
+    if (user_id && !parseId(user_id)) {
+      return res.status(400).json({ success: false, message: "Invalid user_id filter." });
+    }
+    if (room_id && !parseId(room_id)) {
+      return res.status(400).json({ success: false, message: "Invalid room_id filter." });
+    }
 
+    const bookings = await Booking.findAll({ user_id, room_id, booking_status, search });
     return res.status(200).json({
       success: true,
       message: bookings.length > 0 ? "Bookings fetched successfully." : "No bookings found.",
-      data: { count: bookings.length, bookings }
+      data: { count: bookings.length, bookings },
     });
   } catch (error) {
     next(error);
@@ -158,8 +159,9 @@ const getAllBookings = async (req, res, next) => {
 
 module.exports = {
   createBooking,
+  checkoutBooking,
   getMyBookings,
   getBookingById,
   cancelBooking,
-  getAllBookings
+  getAllBookings,
 };

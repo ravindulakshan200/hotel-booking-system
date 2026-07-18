@@ -2,18 +2,28 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getHotelById } from '../services/hotelService';
 import { getRoomsByHotel } from '../services/roomService';
-import { getHotelReviews } from '../services/reviewService';
+import { getHotelReviews, submitReview } from '../services/reviewService';
+import { getMyFavorites, addFavorite, removeFavorite } from '../services/favoriteService';
+import { useAuth } from '../context/AuthContext';
 import { formatCurrency } from '../utils/formatters';
 
 const HotelDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [hotel, setHotel] = useState(null);
   const [rooms, setRooms] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
+
+  const [reviewData, setReviewData] = useState({ rating: 5, comment: '' });
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewMessage, setReviewMessage] = useState({ type: '', text: '' });
 
   const handleBookNow = (room) => {
     navigate('/book', { state: { room, hotel } });
@@ -22,14 +32,26 @@ const HotelDetails = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [hotelResponse, roomsResponse, reviewsResponse] = await Promise.all([
+        const promises = [
           getHotelById(id),
           getRoomsByHotel(id),
           getHotelReviews(id).catch(() => ({ data: { reviews: [] } }))
-        ]);
-        setHotel(hotelResponse.data?.data?.hotel);
-        setRooms(roomsResponse.data?.data?.rooms || []);
-        setReviews(reviewsResponse.data?.data?.reviews || []);
+        ];
+        
+        if (user) {
+          promises.push(getMyFavorites().catch(() => ({ data: { data: { favorites: [] } } })));
+        }
+
+        const results = await Promise.all(promises);
+        
+        setHotel(results[0].data?.data?.hotel);
+        setRooms(results[1].data?.data?.rooms || []);
+        setReviews(results[2].data?.data?.reviews || []);
+
+        if (user && results[3]) {
+          const userFavorites = results[3].data?.data?.favorites || [];
+          setIsFavorite(userFavorites.some(f => f.hotel_id === parseInt(id)));
+        }
       } catch (err) {
         setError('Failed to fetch hotel details');
       } finally {
@@ -37,7 +59,47 @@ const HotelDetails = () => {
       }
     };
     fetchData();
-  }, [id]);
+  }, [id, user]);
+
+  const handleFavoriteToggle = async () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    setFavoriteLoading(true);
+    try {
+      if (isFavorite) {
+        await removeFavorite(id);
+        setIsFavorite(false);
+      } else {
+        await addFavorite(id);
+        setIsFavorite(true);
+      }
+    } catch (err) {
+      alert('Failed to update favorites');
+    } finally {
+      setFavoriteLoading(false);
+    }
+  };
+
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    if (!user) return navigate('/login');
+    setReviewLoading(true);
+    setReviewMessage({ type: '', text: '' });
+    try {
+      await submitReview({ hotelId: id, ...reviewData });
+      setReviewMessage({ type: 'success', text: 'Review submitted successfully!' });
+      setReviewData({ rating: 5, comment: '' });
+      // Refresh reviews
+      const reviewsRes = await getHotelReviews(id);
+      setReviews(reviewsRes.data?.data?.reviews || []);
+    } catch (err) {
+      setReviewMessage({ type: 'danger', text: err.response?.data?.message || 'Failed to submit review' });
+    } finally {
+      setReviewLoading(false);
+    }
+  };
 
   if (loading) return (
     <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '60vh' }}>
@@ -64,6 +126,15 @@ const HotelDetails = () => {
             <span className="text-white opacity-75 fs-5">
               <i className="bi bi-geo-alt-fill me-1"></i> {hotel.city}, Sri Lanka
             </span>
+            <button 
+              onClick={handleFavoriteToggle} 
+              disabled={favoriteLoading}
+              className={`btn btn-sm rounded-pill px-3 ms-3 ${isFavorite ? 'btn-danger' : 'btn-outline-light'}`}
+              aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+            >
+              <i className={`bi ${isFavorite ? 'bi-heart-fill' : 'bi-heart'} me-1`}></i>
+              {isFavorite ? 'Favorited' : 'Add to Favorites'}
+            </button>
           </div>
           <h1 className="display-3 font-serif fw-bold mb-3 text-white">{hotel.name}</h1>
           <p className="lead fs-4 opacity-90 text-white mb-0">
@@ -152,6 +223,44 @@ const HotelDetails = () => {
             <h3 className="font-serif fw-bold text-primary mb-4 d-flex align-items-center">
               <i className="bi bi-chat-quote-fill me-2 text-accent"></i> Guest Reviews
             </h3>
+
+            {user && (
+              <div className="modern-card p-4 mb-4">
+                <h5 className="fw-bold text-primary mb-3">Write a Review</h5>
+                {reviewMessage.text && (
+                  <div className={`alert alert-${reviewMessage.type}`}>{reviewMessage.text}</div>
+                )}
+                <form onSubmit={handleReviewSubmit}>
+                  <div className="mb-3">
+                    <label className="form-label fw-bold">Rating</label>
+                    <select 
+                      className="form-select" 
+                      value={reviewData.rating} 
+                      onChange={(e) => setReviewData({...reviewData, rating: Number(e.target.value)})}
+                    >
+                      <option value="5">5 - Excellent</option>
+                      <option value="4">4 - Very Good</option>
+                      <option value="3">3 - Average</option>
+                      <option value="2">2 - Poor</option>
+                      <option value="1">1 - Terrible</option>
+                    </select>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label fw-bold">Comment (Optional)</label>
+                    <textarea 
+                      className="form-control" 
+                      rows="3" 
+                      value={reviewData.comment} 
+                      onChange={(e) => setReviewData({...reviewData, comment: e.target.value})}
+                    ></textarea>
+                  </div>
+                  <button type="submit" className="btn btn-primary px-4" disabled={reviewLoading}>
+                    {reviewLoading ? <span className="spinner-border spinner-border-sm me-2"></span> : 'Submit Review'}
+                  </button>
+                </form>
+              </div>
+            )}
+
             <div className="modern-card p-4 mb-5">
               {reviews.length === 0 ? (
                 <p className="text-muted text-center my-4">No reviews yet for this hotel.</p>
@@ -163,7 +272,7 @@ const HotelDetails = () => {
                         <h6 className="fw-bold mb-0 text-primary">
                           {review.first_name} {review.last_name}
                         </h6>
-                        <span className="star-rating">
+                        <span className="star-rating text-warning fs-5">
                           {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
                         </span>
                       </div>

@@ -11,9 +11,8 @@
 --   — OR —
 --   SOURCE /path/to/database.sql;
 --
--- ⚠️  Seed data passwords are PLAIN TEXT placeholders.
---     Replace each password value with a bcrypt hash (cost factor ≥ 12)
---     before running in any environment beyond local development.
+-- Seed data passwords below are bcrypt hashes. For shared environments,
+-- replace the demo credentials and regenerate hashes with cost factor 12.
 -- =============================================================================
 
 
@@ -120,6 +119,9 @@ CREATE TABLE IF NOT EXISTS rooms (
   -- Constraints
   PRIMARY KEY (id),
 
+  CONSTRAINT chk_rooms_price CHECK (price_per_night > 0),
+  CONSTRAINT chk_rooms_capacity CHECK (capacity BETWEEN 1 AND 20),
+
   -- room_number is unique per hotel, not globally
   UNIQUE KEY uq_rooms_hotel_number (hotel_id, room_number),
 
@@ -176,6 +178,7 @@ CREATE TABLE IF NOT EXISTS bookings (
   -- check_out must be strictly after check_in
   -- Enforced natively on MySQL 8.0.16+; enforce in app layer on older versions
   CONSTRAINT chk_bookings_dates CHECK (check_out > check_in),
+  CONSTRAINT chk_bookings_total CHECK (total_price > 0),
 
   -- Foreign key: booking belongs to a user
   -- RESTRICT prevents deleting a user who has bookings
@@ -196,6 +199,7 @@ CREATE TABLE IF NOT EXISTS bookings (
   -- Indexes
   INDEX idx_bookings_user_id        (user_id),
   INDEX idx_bookings_room_id        (room_id),
+  INDEX idx_bookings_room_overlap   (room_id, booking_status, check_in, check_out),
   INDEX idx_bookings_status         (booking_status),
   INDEX idx_bookings_dates          (check_in, check_out)
 
@@ -208,10 +212,10 @@ CREATE TABLE IF NOT EXISTS bookings (
 -- =============================================================================
 -- TABLE: payments
 -- =============================================================================
--- Records a payment transaction tied to a booking (1-to-1 relationship).
+-- Records payment attempts tied to a booking (1:N relationship).
 -- transaction_reference stores the external payment gateway reference ID.
--- No updated_at column — payments are immutable records; issue a new payment
--- record for refunds rather than mutating the original.
+-- No updated_at column is used. The demo payment lifecycle updates only the
+-- payment_status field (for example, completed -> refunded).
 -- =============================================================================
 
 CREATE TABLE IF NOT EXISTS payments (
@@ -236,6 +240,8 @@ CREATE TABLE IF NOT EXISTS payments (
   -- Constraints
   PRIMARY KEY (id),
 
+  CONSTRAINT chk_payments_amount CHECK (amount > 0),
+
   -- Foreign key: payment belongs to a booking
   -- RESTRICT prevents deleting a booking that has a payment record
   CONSTRAINT fk_payments_booking
@@ -252,16 +258,15 @@ CREATE TABLE IF NOT EXISTS payments (
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci
-  COMMENT='Payment records for bookings — treated as immutable audit entries';
+  COMMENT='Demo payment records for bookings; no real money is processed';
 
 
 -- =============================================================================
 -- SEED DATA
 -- =============================================================================
--- ⚠️  IMPORTANT — PASSWORD SECURITY:
---     All passwords below are plain-text placeholders for development.
---     Before running in staging or production, replace each password
---     column value with a bcrypt hash generated at cost factor 12:
+-- IMPORTANT — PASSWORD SECURITY:
+--     The values below are development bcrypt hashes. Before staging or
+--     production, replace the demo accounts and generate cost-factor-12 hashes:
 --
 --       Node.js: bcrypt.hashSync('PlainPassword123!', 12)
 --
@@ -275,9 +280,9 @@ CREATE TABLE IF NOT EXISTS payments (
 -- -----------------------------------------------------------------------------
 
 INSERT INTO users (first_name, last_name, email, password, phone, role) VALUES
-  ('Super', 'Admin',    'admin@hotelbooking.com',    '$2a$10$EpnTMSfnmY7R9QjAzl.h8.0VpSgo67KApLKexnief9NWZSYBvZEOe',    '+94 77 100 0001', 'admin'),
-  ('John',  'Doe',      'john.doe@example.com',      '$2a$10$6kSkkl0zUCnq1CtkBnR4uO2tqUUYm9Ot7JPYOaZTQAyxQvF5mo85K', '+94 71 555 2001', 'customer'),
-  ('Jane',  'Smith',    'jane.smith@example.com',     '$2a$10$6kSkkl0zUCnq1CtkBnR4uO2tqUUYm9Ot7JPYOaZTQAyxQvF5mo85K', '+94 76 555 2002', 'customer');
+  ('Super', 'Admin',    'admin@hotelbooking.com',    '$2a$12$vMY9SuAQQTuRhXPzVqsRke0AM9xjoinivTOyja1inWke.pBG73ije', '+94 77 100 0001', 'admin'),
+  ('John',  'Doe',      'john.doe@example.com',      '$2a$12$j3gbhIPqSljanamuYPT.aefPfzTv9cYTFfz/dhOsKqokpStHWr48.', '+94 71 555 2001', 'customer'),
+  ('Jane',  'Smith',    'jane.smith@example.com',    '$2a$12$j3gbhIPqSljanamuYPT.aefPfzTv9cYTFfz/dhOsKqokpStHWr48.', '+94 76 555 2002', 'customer');
 
 
 -- -----------------------------------------------------------------------------
@@ -372,6 +377,7 @@ CREATE TABLE IF NOT EXISTS reviews (
   created_at   TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
   PRIMARY KEY (id),
+  CONSTRAINT chk_reviews_rating CHECK (rating BETWEEN 1 AND 5),
   UNIQUE KEY uq_reviews_user_hotel (user_id, hotel_id),
 
   CONSTRAINT fk_reviews_user
@@ -459,7 +465,7 @@ INSERT INTO reviews (user_id, hotel_id, rating, comment) VALUES
 --     ON UPDATE CASCADE  — room PK changes propagate to booking FK.
 --
 --   bookings ──< payments
---     One booking has one primary payment; refunds create additional records (1:N→logical 1:1).
+--     One booking has one primary demo payment; status tracks refund state.
 --     FK: payments.booking_id → bookings.id
 --     ON DELETE RESTRICT — prevents deleting a booking with a payment record.
 --     ON UPDATE CASCADE  — booking PK changes propagate to payment FK.
@@ -469,7 +475,7 @@ INSERT INTO reviews (user_id, hotel_id, rating, comment) VALUES
 --   users     : bookings  = 1 : N
 --   hotels    : rooms     = 1 : N
 --   rooms     : bookings  = 1 : N
---   bookings  : payments  = 1 : 1 (logical; schema allows N for refund records)
+--   bookings  : payments  = 1 : N (application permits one completed payment at a time)
 --
 -- INDEXING STRATEGY
 -- ─────────────────
@@ -482,6 +488,7 @@ INSERT INTO reviews (user_id, hotel_id, rating, comment) VALUES
 --   idx_rooms_type_price        — Supports filter/sort by room type and price.
 --   idx_bookings_user_id        — Speeds up "my bookings" queries.
 --   idx_bookings_room_id        — Speeds up availability checks for a specific room.
+--   idx_bookings_room_overlap   — Supports locked date-overlap checks.
 --   idx_bookings_status         — Speeds up admin filter by booking status.
 --   idx_bookings_dates          — Speeds up date-range overlap queries.
 --   idx_payments_booking_id     — Speeds up payment lookup by booking.

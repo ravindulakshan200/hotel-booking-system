@@ -7,6 +7,7 @@ const router = express.Router();
 
 const {
   createBooking,
+  checkoutBooking,
   getMyBookings,
   getBookingById,
   cancelBooking,
@@ -23,6 +24,7 @@ router.route("/")
   .post(createBooking)
   .get(adminOnly, getAllBookings);
 
+router.post("/checkout", checkoutBooking);
 router.get("/my-bookings", getMyBookings);
 
 router.route("/:id")

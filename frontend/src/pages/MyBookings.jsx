@@ -29,7 +29,7 @@ const MyBookings = () => {
   }, []);
 
   const handleCancel = async (id) => {
-    if (!window.confirm("Are you sure you want to cancel this booking?")) return;
+    if (!window.confirm("Cancel this booking? Any completed demo payment will be marked as refunded.")) return;
     setActionError('');
     try {
       await cancelBooking(id);
@@ -45,16 +45,15 @@ const MyBookings = () => {
   return (
     <div className="page-wrapper fade-in" style={{ backgroundColor: 'var(--color-bg)' }}>
       <div className="container py-5">
-        
         {successMessage && <div className="alert alert-success alert-dismissible fade show slide-up"><i className="bi bi-check-circle-fill me-2"></i>{successMessage}</div>}
         {actionError && <div className="alert alert-danger slide-up"><i className="bi bi-exclamation-triangle-fill me-2"></i>{actionError}</div>}
-        
+
         <div className="d-flex justify-content-between align-items-end mb-4 slide-up">
           <div>
             <h1 className="font-serif fw-bold text-primary mb-1">My Bookings</h1>
             <p className="text-muted mb-0">Manage your upcoming and past stays.</p>
           </div>
-          <Link to="/hotels" className="btn btn-outline-primary d-none d-md-inline-block">Book Another Stay</Link>
+          <Link to="/hotels" className="btn btn-outline-primary d-none d-md-inline-block rounded-pill">Book Another Stay</Link>
         </div>
 
         {bookings.length === 0 ? (
@@ -62,10 +61,10 @@ const MyBookings = () => {
             <div className="mb-4 text-muted" style={{ fontSize: '4rem' }}><i className="bi bi-calendar-x"></i></div>
             <h3 className="font-serif fw-bold text-primary mb-3">No bookings yet</h3>
             <p className="text-muted mb-4 fs-5">Start exploring our premium destinations and make your first reservation.</p>
-            <Link to="/hotels" className="btn btn-primary btn-lg px-5">Explore Hotels</Link>
+            <Link to="/hotels" className="btn btn-primary btn-lg px-5 rounded-pill">Explore Hotels</Link>
           </div>
         ) : (
-          <div className="modern-card slide-up delay-100 border-0 p-0 overflow-hidden">
+          <div className="premium-card slide-up delay-100 border-0 p-0 overflow-hidden">
             <div className="table-responsive">
               <table className="table table-hover align-middle mb-0" style={{ borderCollapse: 'collapse' }}>
                 <thead className="bg-light text-muted">
@@ -103,10 +102,7 @@ const MyBookings = () => {
                       </td>
                       <td className="pe-4 py-3 text-end">
                         {booking.booking_status !== 'cancelled' && booking.booking_status !== 'completed' ? (
-                          <button 
-                            className="btn btn-sm btn-outline-danger px-3 rounded-pill"
-                            onClick={() => handleCancel(booking.id)}
-                          >
+                          <button className="btn btn-sm btn-outline-danger px-3 rounded-pill" onClick={() => handleCancel(booking.id)}>
                             Cancel
                           </button>
                         ) : (

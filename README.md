@@ -8,7 +8,8 @@ A polished full-stack hotel booking application built with Node.js, Express, MyS
 
 - Guest-facing hotel discovery and room browsing
 - Secure authentication with JWT-based login and profile access
-- Booking flow with date validation and booking history
+- Transaction-safe booking flow with date validation and booking history
+- Clearly labelled demo checkout (no real card data or money processing)
 - Admin control panel for managing hotels, rooms, bookings, users, payments, and reviews
 - Responsive React UI with Bootstrap styling and protected routes
 
@@ -22,11 +23,12 @@ A polished full-stack hotel booking application built with Node.js, Express, MyS
 - Express.js
 - MySQL + mysql2
 - JWT + bcryptjs
-- dotenv, cors
+- Helmet, rate limiting, dotenv, cors
 
 ### Frontend
 
 - React
+- Vite + Vitest
 - React Router DOM
 - Axios
 - Bootstrap
@@ -61,7 +63,7 @@ frontend/
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 20.19+ or 22.12+
 - MySQL 8+
 - npm 9+
 
@@ -85,21 +87,22 @@ DB_PORT=3306
 DB_HOST=localhost
 DB_USER=root
 DB_PASSWORD=
-DB_NAME=hotel_booking_system
-JWT_SECRET=your_jwt_secret_here
+DB_NAME=hotel_booking_db
+JWT_SECRET=replace_with_a_private_random_secret_of_at_least_32_characters
 JWT_EXPIRES_IN=7d
-CLIENT_URL=http://localhost:3000
+CLIENT_URL=http://localhost:5173
+APP_TIMEZONE=Asia/Colombo
 ```
 
 Frontend:
 
 ```env
-REACT_APP_API_URL=http://localhost:5000/api/v1
+VITE_API_URL=http://localhost:5000/api/v1
 ```
 
 ### 3. Create the database
 
-Create a MySQL database called `hotel_booking_system`, then import the SQL from [backend/database/database.sql](backend/database/database.sql) if available.
+Import [backend/database/database.sql](backend/database/database.sql). It creates and selects the `hotel_booking_db` database.
 
 ### 4. Run the app
 
@@ -130,7 +133,7 @@ http://localhost:5000/api/v1
 - Auth: `/auth/register`, `/auth/login`, `/auth/profile`
 - Hotels: `/hotels`, `/hotels/:id`
 - Rooms: `/rooms`, `/rooms/:id`
-- Bookings: `/bookings`, `/bookings/my-bookings`, `/bookings/:id/cancel`
+- Bookings: `/bookings`, `/bookings/checkout`, `/bookings/my-bookings`, `/bookings/:id/cancel`
 - Admin: `/admin/dashboard`, `/admin/users`, `/admin/bookings/:id/status`
 
 ---
@@ -139,9 +142,10 @@ http://localhost:5000/api/v1
 
 The following checks were verified in the current workspace:
 
-- Frontend tests: passing
-- Frontend production build: passing
-- Backend startup: requires a reachable MySQL instance and a valid database name
+- Backend tests: `cd backend && npm test`
+- Frontend tests: `cd frontend && npm test`
+- Frontend production build: `cd frontend && npm run build`
+- Readiness: `/api/v1/health` checks MySQL; liveness: `/api/v1/health/live`
 
 ---
 

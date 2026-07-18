@@ -4,9 +4,9 @@
  */
 
 const Payment = require("../models/Payment");
-const Booking = require("../models/Booking");
 
 const VALID_METHODS = ["card", "cash", "online"];
+const VALID_STATUSES = ["pending", "completed", "refunded", "failed"];
 
 const processPayment = async (req, res, next) => {
   try {
@@ -26,47 +26,24 @@ const processPayment = async (req, res, next) => {
       });
     }
 
-    const booking = await Booking.findById(booking_id);
-    if (!booking) {
-      return res.status(404).json({ success: false, message: "Booking not found." });
+    const parsedBookingId = Number(booking_id);
+    if (!Number.isInteger(parsedBookingId) || parsedBookingId < 1) {
+      return res.status(400).json({ success: false, message: "Invalid booking_id." });
     }
 
-    if (req.user.role !== "admin" && booking.user_id !== req.user.id) {
-      return res.status(403).json({ success: false, message: "Access denied." });
-    }
-
-    if (booking.booking_status === "cancelled") {
-      return res.status(400).json({
-        success: false,
-        message: "Cannot pay for a cancelled booking.",
-      });
-    }
-
-    const existingPayment = await Payment.findByBooking(booking_id);
-    if (existingPayment && existingPayment.payment_status === "completed") {
-      return res.status(409).json({
-        success: false,
-        message: "This booking has already been paid.",
-      });
-    }
-
-    const transactionRef = `TXN-${Date.now()}-${booking_id}`;
-    const paymentId = await Payment.create({
-      booking_id,
-      payment_method,
-      amount: booking.total_price,
-      payment_status: "completed",
-      transaction_reference: transactionRef,
+    const paymentId = await Payment.processAtomic({
+      bookingId: parsedBookingId,
+      paymentMethod: payment_method,
+      actorUserId: req.user.id,
+      isAdmin: req.user.role === "admin",
     });
-
-    await Booking.updateStatus(booking_id, "confirmed");
 
     const payment = await Payment.findById(paymentId);
 
     return res.status(201).json({
       success: true,
-      message: "Payment processed successfully.",
-      data: { payment },
+      message: "Demo payment recorded successfully. No real money was processed.",
+      data: { payment, payment_mode: "demo" },
     });
   } catch (error) {
     if (error.code === "ER_DUP_ENTRY") {
@@ -82,6 +59,9 @@ const processPayment = async (req, res, next) => {
 const getAllPayments = async (req, res, next) => {
   try {
     const { payment_status } = req.query;
+    if (payment_status && !VALID_STATUSES.includes(payment_status)) {
+      return res.status(400).json({ success: false, message: "Invalid payment_status filter." });
+    }
     const payments = await Payment.findAll({ payment_status });
 
     return res.status(200).json({
@@ -141,26 +121,13 @@ const refundPayment = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Invalid payment ID." });
     }
 
-    const payment = await Payment.findById(id);
-    if (!payment) {
-      return res.status(404).json({ success: false, message: "Payment not found." });
-    }
-
-    if (payment.payment_status !== "completed") {
-      return res.status(400).json({
-        success: false,
-        message: "Only completed payments can be refunded.",
-      });
-    }
-
-    await Payment.updateStatus(id, "refunded");
-    await Booking.updateStatus(payment.booking_id, "cancelled");
+    await Payment.refundAtomic(id);
 
     const updatedPayment = await Payment.findById(id);
 
     return res.status(200).json({
       success: true,
-      message: "Payment refunded successfully.",
+      message: "Demo payment marked as refunded successfully.",
       data: { payment: updatedPayment },
     });
   } catch (error) {

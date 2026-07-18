@@ -4,6 +4,7 @@
 
 const Review = require("../models/Review");
 const Hotel = require("../models/Hotel");
+const Booking = require("../models/Booking");
 
 const getHotelReviews = async (req, res, next) => {
   try {
@@ -36,29 +37,45 @@ const createReview = async (req, res, next) => {
   try {
     const { hotel_id, rating, comment } = req.body;
 
-    if (!hotel_id || !rating) {
+    const hotelId = Number(hotel_id);
+    if (!Number.isInteger(hotelId) || hotelId < 1 || rating === undefined) {
       return res.status(400).json({
         success: false,
         message: "hotel_id and rating are required.",
       });
     }
 
-    const ratingNum = parseInt(rating, 10);
-    if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+    const ratingNum = Number(rating);
+    if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) {
       return res.status(400).json({
         success: false,
         message: "rating must be between 1 and 5.",
       });
     }
 
-    const hotel = await Hotel.findById(hotel_id);
+    if (comment !== undefined && comment !== null && typeof comment !== "string") {
+      return res.status(400).json({ success: false, message: "comment must be text." });
+    }
+    if (typeof comment === "string" && comment.trim().length > 2000) {
+      return res.status(400).json({ success: false, message: "comment must not exceed 2000 characters." });
+    }
+
+    const hotel = await Hotel.findById(hotelId);
     if (!hotel) {
       return res.status(404).json({ success: false, message: "Hotel not found." });
     }
 
+    const hasCompletedStay = await Booking.hasCompletedStay(req.user.id, hotelId);
+    if (!hasCompletedStay) {
+      return res.status(403).json({
+        success: false,
+        message: "A completed stay at this hotel is required before submitting a review.",
+      });
+    }
+
     const reviewId = await Review.create({
       user_id: req.user.id,
-      hotel_id,
+      hotel_id: hotelId,
       rating: ratingNum,
       comment,
     });

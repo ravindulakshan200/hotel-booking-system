@@ -17,7 +17,7 @@ const SEED_USERS = [
 async function seed() {
   try {
     for (const user of SEED_USERS) {
-      const hash = await bcrypt.hash(user.password, 10);
+      const hash = await bcrypt.hash(user.password, 12);
       await pool.query("UPDATE users SET password = ? WHERE email = ?", [hash, user.email]);
       console.log(`Updated password for ${user.email}`);
     }

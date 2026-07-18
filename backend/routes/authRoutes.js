@@ -16,14 +16,15 @@ const router   = express.Router();
 
 const { register, login, getProfile, updateProfile, changePassword } = require("../controllers/authController");
 const { protect }                     = require("../middleware/authMiddleware");
+const { authLimiter }                 = require("../middleware/rateLimiters");
 
 // ── Public ────────────────────────────────────────────────────────────────────
 
 // POST /api/v1/auth/register
-router.post("/register", register);
+router.post("/register", authLimiter, register);
 
 // POST /api/v1/auth/login
-router.post("/login", login);
+router.post("/login", authLimiter, login);
 
 // ── Protected ─────────────────────────────────────────────────────────────────
 

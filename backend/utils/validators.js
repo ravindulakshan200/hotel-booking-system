@@ -1,90 +1,136 @@
-/**
- * utils/validators.js
- *
- * Input validation helpers for authentication routes.
- * Returns a structured result: { valid: boolean, errors: string[] }
- *
- * These are intentionally lightweight — no external library required.
- * Extend with more rules as additional routes are implemented.
- */
+const { parseDateOnly, getTodayDateOnly, calculateNights } = require("./dateUtils");
 
-// Simple email format regex
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_REGEX = /^[+0-9()\-\s]{7,20}$/;
+const MIN_PASSWORD_LENGTH = 8;
+const MAX_PASSWORD_BYTES = 72;
 
-// Password must be at least 6 characters
-const MIN_PASSWORD_LENGTH = 6;
+const validateName = (value, field, errors) => {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    errors.push(`${field} is required`);
+  } else if (value.trim().length > 50) {
+    errors.push(`${field} must not exceed 50 characters`);
+  }
+};
 
-/**
- * Validate registration input fields.
- *
- * @param {object} body — req.body from the register route
- * @returns {{ valid: boolean, errors: string[] }}
- */
-const validateRegisterInput = (body) => {
+const validatePasswordStrength = (password, field, errors) => {
+  if (typeof password !== "string" || password.length === 0) {
+    errors.push(`${field} is required`);
+    return;
+  }
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    errors.push(`${field} must be at least ${MIN_PASSWORD_LENGTH} characters`);
+  }
+  if (Buffer.byteLength(password, "utf8") > MAX_PASSWORD_BYTES) {
+    errors.push(`${field} must not exceed ${MAX_PASSWORD_BYTES} UTF-8 bytes`);
+  }
+  if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+    errors.push(`${field} must include at least one letter and one number`);
+  }
+};
+
+const validateRegisterInput = (body = {}) => {
   const errors = [];
   const { first_name, last_name, email, password, phone } = body;
 
-  // first_name
-  if (!first_name || typeof first_name !== "string" || first_name.trim().length === 0) {
-    errors.push("first_name is required");
-  } else if (first_name.trim().length > 50) {
-    errors.push("first_name must not exceed 50 characters");
+  validateName(first_name, "first_name", errors);
+  validateName(last_name, "last_name", errors);
+
+  if (typeof email !== "string" || !EMAIL_REGEX.test(email.trim()) || email.trim().length > 150) {
+    errors.push("email must be a valid email address of at most 150 characters");
   }
 
-  // last_name
-  if (!last_name || typeof last_name !== "string" || last_name.trim().length === 0) {
-    errors.push("last_name is required");
-  } else if (last_name.trim().length > 50) {
-    errors.push("last_name must not exceed 50 characters");
-  }
+  validatePasswordStrength(password, "password", errors);
 
-  // email
-  if (!email || typeof email !== "string" || email.trim().length === 0) {
-    errors.push("email is required");
-  } else if (!EMAIL_REGEX.test(email.trim())) {
-    errors.push("email must be a valid email address");
-  }
-
-  // password
-  if (!password || typeof password !== "string" || password.length === 0) {
-    errors.push("password is required");
-  } else if (password.length < MIN_PASSWORD_LENGTH) {
-    errors.push(`password must be at least ${MIN_PASSWORD_LENGTH} characters`);
-  }
-
-  // phone — optional, but validate format if provided
   if (phone !== undefined && phone !== null && phone !== "") {
-    if (typeof phone !== "string" || phone.trim().length > 20) {
-      errors.push("phone must be a string of max 20 characters");
+    if (typeof phone !== "string" || !PHONE_REGEX.test(phone.trim())) {
+      errors.push("phone must be a valid phone number of 7 to 20 characters");
     }
   }
 
   return { valid: errors.length === 0, errors };
 };
 
-/**
- * Validate login input fields.
- *
- * @param {object} body — req.body from the login route
- * @returns {{ valid: boolean, errors: string[] }}
- */
-const validateLoginInput = (body) => {
+const validateLoginInput = (body = {}) => {
   const errors = [];
   const { email, password } = body;
 
-  // email
-  if (!email || typeof email !== "string" || email.trim().length === 0) {
-    errors.push("email is required");
-  } else if (!EMAIL_REGEX.test(email.trim())) {
+  if (typeof email !== "string" || !EMAIL_REGEX.test(email.trim())) {
     errors.push("email must be a valid email address");
   }
-
-  // password
-  if (!password || typeof password !== "string" || password.length === 0) {
+  if (typeof password !== "string" || password.length === 0) {
     errors.push("password is required");
   }
 
   return { valid: errors.length === 0, errors };
 };
 
-module.exports = { validateRegisterInput, validateLoginInput };
+const validateProfileInput = (body = {}) => {
+  const errors = [];
+  const allowedFields = ["first_name", "last_name", "phone"];
+  const providedFields = allowedFields.filter((field) => body[field] !== undefined);
+
+  if (providedFields.length === 0) {
+    errors.push("Provide at least one field to update (first_name, last_name, phone)");
+  }
+
+  if (body.first_name !== undefined) validateName(body.first_name, "first_name", errors);
+  if (body.last_name !== undefined) validateName(body.last_name, "last_name", errors);
+  if (body.phone !== undefined && body.phone !== null && body.phone !== "") {
+    if (typeof body.phone !== "string" || !PHONE_REGEX.test(body.phone.trim())) {
+      errors.push("phone must be a valid phone number of 7 to 20 characters");
+    }
+  }
+
+  return { valid: errors.length === 0, errors };
+};
+
+const validatePasswordChangeInput = (body = {}) => {
+  const errors = [];
+  const { current_password, new_password } = body;
+
+  if (typeof current_password !== "string" || current_password.length === 0) {
+    errors.push("current_password is required");
+  }
+  validatePasswordStrength(new_password, "new_password", errors);
+  if (current_password && new_password && current_password === new_password) {
+    errors.push("new_password must be different from current_password");
+  }
+
+  return { valid: errors.length === 0, errors };
+};
+
+const validateBookingInput = (body = {}) => {
+  const errors = [];
+  const roomId = Number(body.room_id);
+  const { check_in, check_out } = body;
+
+  if (!Number.isInteger(roomId) || roomId < 1) {
+    errors.push("room_id must be a positive integer");
+  }
+  if (!parseDateOnly(check_in)) {
+    errors.push("check_in must use a valid YYYY-MM-DD date");
+  }
+  if (!parseDateOnly(check_out)) {
+    errors.push("check_out must use a valid YYYY-MM-DD date");
+  }
+
+  if (parseDateOnly(check_in) && check_in < getTodayDateOnly()) {
+    errors.push("check_in cannot be in the past");
+  }
+  if (parseDateOnly(check_in) && parseDateOnly(check_out) && calculateNights(check_in, check_out) < 1) {
+    errors.push("check_out must be after check_in");
+  }
+
+  return { valid: errors.length === 0, errors };
+};
+
+module.exports = {
+  MIN_PASSWORD_LENGTH,
+  MAX_PASSWORD_BYTES,
+  validateRegisterInput,
+  validateLoginInput,
+  validateProfileInput,
+  validatePasswordChangeInput,
+  validateBookingInput,
+};

@@ -10,6 +10,7 @@
  */
 
 const jwt = require("jsonwebtoken");
+const { getJwtSecret } = require("../config/env");
 
 /**
  * Generate a signed JWT for a given user ID.
@@ -20,7 +21,7 @@ const jwt = require("jsonwebtoken");
 const generateToken = (userId) => {
   return jwt.sign(
     { id: userId },                       // Payload — keep minimal; never include password
-    process.env.JWT_SECRET || "change_this_secret", // Secret from .env
+    getJwtSecret(),
     { expiresIn: process.env.JWT_EXPIRES_IN || "7d" } // Token lifetime
   );
 };

@@ -63,15 +63,7 @@ const Hotels = () => {
 
   return (
     <div className="page-wrapper fade-in" style={{ backgroundColor: 'var(--color-bg)' }}>
-      {/* Page Header */}
-      <div
-        className="py-5 position-relative"
-        style={{
-          backgroundImage: 'linear-gradient(to right, rgba(11,34,57,0.92), rgba(26,66,110,0.75)), url(https://images.unsplash.com/photo-1578662996442-48f60103fc96?auto=format&fit=crop&w=2000&q=80)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      >
+      <div className="py-5 position-relative" style={{ backgroundImage: 'linear-gradient(to right, rgba(11,34,57,0.92), rgba(26,66,110,0.75)), url(https://images.unsplash.com/photo-1578662996442-48f60103fc96?auto=format&fit=crop&w=2000&q=80)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
         <div className="container py-4 text-center position-relative">
           <span className="text-accent fw-bold text-uppercase mb-3 d-block" style={{ letterSpacing: '2px', fontSize: '0.8rem' }}>
             🌴 Sri Lanka's Finest
@@ -81,7 +73,6 @@ const Hotels = () => {
             Discover premium stays along the coast, in the highlands, and around the island's cultural heartlands.
           </p>
 
-          {/* Search + Filter Bar */}
           <div className="mt-4 d-flex flex-column flex-md-row gap-3 justify-content-center align-items-center mx-auto" style={{ maxWidth: '700px' }}>
             <div className="input-group flex-grow-1" style={{ background: 'rgba(255,255,255,0.95)', borderRadius: '50px', padding: '0.4rem 1rem', boxShadow: '0 8px 30px rgba(0,0,0,0.2)' }}>
               <span className="input-group-text border-0 bg-transparent">
@@ -112,7 +103,6 @@ const Hotels = () => {
       </div>
 
       <div className="container pb-5 pt-4">
-        {/* Filter Tags / Active Filters */}
         <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
           <div className="d-flex align-items-center gap-2 flex-wrap">
             {hasFilters ? (
@@ -164,9 +154,7 @@ const Hotels = () => {
               {hasFilters ? 'No hotels match your search. Try different filters.' : 'No hotels available right now.'}
             </p>
             {hasFilters && (
-              <button className="btn btn-primary px-5" onClick={handleClearFilters}>
-                Show All Hotels
-              </button>
+              <button className="btn btn-primary px-5" onClick={handleClearFilters}>Show All Hotels</button>
             )}
           </div>
         ) : (
@@ -174,15 +162,9 @@ const Hotels = () => {
             {hotels.map((hotel, index) => (
               <div key={hotel.id} className="col-md-6 col-lg-4 slide-up" style={{ animationDelay: `${(index % 9) * 60}ms` }}>
                 <div className="modern-card hover-lift h-100 d-flex flex-column">
-                  <div
-                    className="image-card-header"
-                    style={{ backgroundImage: `url(${HOTEL_IMAGES[index % HOTEL_IMAGES.length]})` }}
-                  >
+                  <div className="image-card-header" style={{ backgroundImage: `url(${HOTEL_IMAGES[index % HOTEL_IMAGES.length]})` }}>
                     <span className="image-card-badge">★ 4.{5 + (index % 5)}</span>
-                    <span
-                      className="position-absolute bottom-0 start-0 m-3 badge rounded-pill text-white px-3"
-                      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
-                    >
+                    <span className="position-absolute bottom-0 start-0 m-3 badge rounded-pill text-white px-3" style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}>
                       <i className="bi bi-geo-alt-fill me-1"></i>{hotel.city}
                     </span>
                   </div>

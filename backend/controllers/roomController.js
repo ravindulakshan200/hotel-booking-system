@@ -6,12 +6,13 @@
 
 const Room = require("../models/Room");
 const Hotel = require("../models/Hotel");
+const { validateBookingInput } = require("../utils/validators");
 
 const validateRoomInput = ({ hotel_id, room_number, room_type, price_per_night, capacity, availability_status }, requireAll = true) => {
   const errors = [];
 
   if (requireAll || hotel_id !== undefined) {
-    if (!hotel_id || isNaN(hotel_id)) {
+    if (!Number.isInteger(Number(hotel_id)) || Number(hotel_id) < 1) {
       errors.push("Valid hotel_id is required");
     }
   }
@@ -26,26 +27,26 @@ const validateRoomInput = ({ hotel_id, room_number, room_type, price_per_night, 
 
   if (requireAll || room_type !== undefined) {
     const validTypes = ['single', 'double', 'suite', 'deluxe'];
-    if (room_type && !validTypes.includes(room_type)) {
+    if (!validTypes.includes(room_type)) {
       errors.push("room_type must be one of: single, double, suite, deluxe");
     }
   }
 
   if (requireAll || price_per_night !== undefined) {
-    if (price_per_night === undefined || isNaN(price_per_night) || price_per_night < 0) {
+    if (!Number.isFinite(Number(price_per_night)) || Number(price_per_night) <= 0) {
       errors.push("A valid positive price_per_night is required");
     }
   }
 
   if (requireAll || capacity !== undefined) {
-    if (capacity !== undefined && (isNaN(capacity) || capacity < 1)) {
+    if (!Number.isInteger(Number(capacity)) || Number(capacity) < 1 || Number(capacity) > 20) {
       errors.push("capacity must be a positive integer");
     }
   }
   
   if (requireAll || availability_status !== undefined) {
     const validStatuses = ['available', 'booked', 'maintenance'];
-    if (availability_status && !validStatuses.includes(availability_status)) {
+    if (!validStatuses.includes(availability_status)) {
       errors.push("availability_status must be one of: available, booked, maintenance");
     }
   }
@@ -56,6 +57,17 @@ const validateRoomInput = ({ hotel_id, room_number, room_type, price_per_night, 
 const getAllRooms = async (req, res, next) => {
   try {
     const { hotel_id, room_type, availability_status } = req.query;
+    const validTypes = ["single", "double", "suite", "deluxe"];
+    const validStatuses = ["available", "booked", "maintenance"];
+    if (hotel_id && (!Number.isInteger(Number(hotel_id)) || Number(hotel_id) < 1)) {
+      return res.status(400).json({ success: false, message: "Invalid hotel_id filter." });
+    }
+    if (room_type && !validTypes.includes(room_type)) {
+      return res.status(400).json({ success: false, message: "Invalid room_type filter." });
+    }
+    if (availability_status && !validStatuses.includes(availability_status)) {
+      return res.status(400).json({ success: false, message: "Invalid availability_status filter." });
+    }
     const rooms = await Room.findAll({ hotel_id, room_type, availability_status });
 
     return res.status(200).json({
@@ -98,7 +110,17 @@ const createRoom = async (req, res, next) => {
     const { hotel_id, room_number, room_type, price_per_night, capacity, availability_status, image_url } = req.body;
 
     const { valid, errors } = validateRoomInput({ hotel_id, room_number, room_type, price_per_night, capacity, availability_status }, true);
-    if (!valid) {
+    if (image_url) {
+      try {
+        const parsedUrl = new URL(image_url);
+        if (!["http:", "https:"].includes(parsedUrl.protocol) || image_url.length > 500) {
+          errors.push("image_url must be a valid HTTP(S) URL of at most 500 characters");
+        }
+      } catch (error) {
+        errors.push("image_url must be a valid HTTP(S) URL of at most 500 characters");
+      }
+    }
+    if (!valid || errors.length > 0) {
       return res.status(400).json({ success: false, message: "Validation failed.", errors });
     }
 
@@ -147,12 +169,22 @@ const updateRoom = async (req, res, next) => {
     }
 
     const { valid, errors } = validateRoomInput(providedFields, false);
-    if (!valid) {
+    if (image_url) {
+      try {
+        const parsedUrl = new URL(image_url);
+        if (!["http:", "https:"].includes(parsedUrl.protocol) || image_url.length > 500) {
+          errors.push("image_url must be a valid HTTP(S) URL of at most 500 characters");
+        }
+      } catch (error) {
+        errors.push("image_url must be a valid HTTP(S) URL of at most 500 characters");
+      }
+    }
+    if (!valid || errors.length > 0) {
       return res.status(400).json({ success: false, message: "Validation failed.", errors });
     }
 
-    if (hotel_id !== undefined && hotel_id !== existing.hotel_id) {
-      const hotel = await Hotel.findById(hotel_id);
+    if (hotel_id !== undefined && Number(hotel_id) !== Number(existing.hotel_id)) {
+      const hotel = await Hotel.findById(Number(hotel_id));
       if (!hotel) {
         return res.status(404).json({ success: false, message: "Hotel not found. Cannot update room to this hotel." });
       }
@@ -226,6 +258,15 @@ const checkRoomAvailability = async (req, res, next) => {
           available: room.availability_status === "available",
           availability_status: room.availability_status,
         },
+      });
+    }
+
+    const dateValidation = validateBookingInput({ room_id: roomId, check_in, check_out });
+    if (!dateValidation.valid) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed.",
+        errors: dateValidation.errors,
       });
     }
 

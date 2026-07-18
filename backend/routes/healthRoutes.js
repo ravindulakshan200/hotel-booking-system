@@ -1,13 +1,14 @@
 /**
  * Health Check Routes
- * Mounts the health check endpoint at /api/health
+ * Mounted at /api/v1/health.
  */
 
 const express = require("express");
 const router = express.Router();
-const { healthCheck } = require("../controllers/healthController");
+const { livenessCheck, readinessCheck } = require("../controllers/healthController");
 
-// GET /api/health
-router.get("/", healthCheck);
+// GET /api/v1/health
+router.get("/", readinessCheck);
+router.get("/live", livenessCheck);
 
 module.exports = router;

@@ -36,6 +36,9 @@ const AdminPayments = () => {
   return (
     <AdminLayout title="Manage Payments">
       {error && <div className="alert alert-danger">{error}</div>}
+      <div className="alert alert-info">
+        These are portfolio demo payment records. No real card details or money are processed.
+      </div>
 
       {loading ? <LoadingSpinner /> : (
         <div className="card shadow-sm">

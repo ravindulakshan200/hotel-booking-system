@@ -19,10 +19,15 @@ const Navbar = () => {
 
   return (
     <nav className="navbar navbar-expand-lg navbar-light modern-navbar sticky-top">
-      <div className="container">
+      <div className="container py-2">
         <Link className="navbar-brand d-flex align-items-center gap-2" to="/">
-          <span style={{ fontSize: '1.5rem' }}>🌴</span>
-          <span>Ceylon Stays</span>
+          <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: '42px', height: '42px', background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-dark))', boxShadow: '0 10px 24px rgba(212,175,55,0.25)' }}>
+            <span style={{ fontSize: '1.2rem' }}>🌴</span>
+          </div>
+          <div>
+            <span className="d-block">Ceylon Stays</span>
+            <small className="d-block text-muted" style={{ fontSize: '0.72rem', letterSpacing: '0.18em', textTransform: 'uppercase' }}>Sri Lanka stays</small>
+          </div>
         </Link>
         <button
           className="navbar-toggler border-0"
@@ -50,6 +55,21 @@ const Navbar = () => {
                     My Bookings
                   </Link>
                 </li>
+                <li className="nav-item">
+                  <Link className={`nav-link ${isActive('/my-payments')}`} to="/my-payments">
+                    My Payments
+                  </Link>
+                </li>
+                <li className="nav-item">
+                  <Link className={`nav-link ${isActive('/favorites')}`} to="/favorites">
+                    Favorites
+                  </Link>
+                </li>
+                <li className="nav-item">
+                  <Link className={`nav-link ${isActive('/profile')}`} to="/profile">
+                    Profile
+                  </Link>
+                </li>
                 {user.role === 'admin' && (
                   <li className="nav-item">
                     <Link className={`nav-link ${isActive('/admin')}`} to="/admin">
@@ -64,10 +84,10 @@ const Navbar = () => {
             {!user ? (
               <>
                 <li className="nav-item">
-                  <Link className="btn btn-outline-primary px-4" to="/login">Login</Link>
+                  <Link className="btn btn-outline-primary btn-sm px-4 rounded-pill" to="/login">Login</Link>
                 </li>
                 <li className="nav-item">
-                  <Link className="btn btn-accent px-4" to="/register">Register</Link>
+                  <Link className="btn btn-accent btn-sm px-4 rounded-pill" to="/register">Register</Link>
                 </li>
               </>
             ) : (
@@ -79,10 +99,7 @@ const Navbar = () => {
                   </span>
                 </li>
                 <li className="nav-item">
-                  <button
-                    className="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold"
-                    onClick={handleLogout}
-                  >
+                  <button className="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold" onClick={handleLogout}>
                     <i className="bi bi-box-arrow-right me-1"></i>Logout
                   </button>
                 </li>
