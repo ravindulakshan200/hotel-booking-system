@@ -8,8 +8,20 @@ const pool = require("../config/db");
 
 const Room = {
   findAll: async (filters = {}) => {
-    let sql = "SELECT * FROM rooms";
+    let selectClause = "SELECT *";
     const params = [];
+
+    if (filters.check_in && filters.check_out && filters.guests) {
+      selectClause = `SELECT *,
+        (availability_status = 'available' AND capacity >= ? AND id NOT IN (
+          SELECT room_id FROM bookings
+          WHERE booking_status NOT IN ('cancelled', 'completed')
+            AND check_in < ? AND check_out > ?
+        )) AS is_available`;
+      params.push(filters.guests, filters.check_out, filters.check_in);
+    }
+
+    let sql = `${selectClause} FROM rooms`;
     const conditions = [];
 
     if (filters.hotel_id) {
@@ -23,6 +35,14 @@ const Room = {
     if (filters.availability_status) {
       conditions.push("availability_status = ?");
       params.push(filters.availability_status);
+    }
+    if (filters.min_price) {
+      conditions.push("price_per_night >= ?");
+      params.push(filters.min_price);
+    }
+    if (filters.max_price) {
+      conditions.push("price_per_night <= ?");
+      params.push(filters.max_price);
     }
 
     if (conditions.length > 0) {

@@ -16,6 +16,7 @@
  */
 
 const Hotel = require("../models/Hotel");
+const { validateAvailabilitySearch } = require("../utils/validators");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -79,6 +80,62 @@ const getAllHotels = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: hotels.length > 0 ? "Hotels fetched successfully." : "No hotels found.",
+      data: {
+        count: hotels.length,
+        hotels,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SEARCH AVAILABLE HOTELS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * @desc    Search available hotels
+ * @route   GET /api/v1/hotels/availability
+ * @access  Public
+ */
+const searchAvailability = async (req, res, next) => {
+  try {
+    const { city, check_in, check_out, guests, room_type, min_price, max_price, sort } = req.query;
+
+    const { valid, errors } = validateAvailabilitySearch({ check_in, check_out, guests, min_price, max_price });
+    if (!valid) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed.",
+        errors,
+      });
+    }
+
+    const validTypes = ["single", "double", "suite", "deluxe"];
+    if (room_type && !validTypes.includes(room_type)) {
+      return res.status(400).json({ success: false, message: "Invalid room_type filter." });
+    }
+
+    const validSorts = ["price_low", "price_high", "name"];
+    if (sort && !validSorts.includes(sort)) {
+      return res.status(400).json({ success: false, message: "Invalid sort option." });
+    }
+
+    const hotels = await Hotel.findAvailable({
+      city,
+      check_in,
+      check_out,
+      guests: Number(guests),
+      room_type,
+      min_price: min_price ? Number(min_price) : undefined,
+      max_price: max_price ? Number(max_price) : undefined,
+      sort
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: hotels.length > 0 ? "Hotels found." : "No hotels available for selected criteria.",
       data: {
         count: hotels.length,
         hotels,
@@ -291,6 +348,7 @@ const deleteHotel = async (req, res, next) => {
 
 module.exports = {
   getAllHotels,
+  searchAvailability,
   getHotelById,
   createHotel,
   updateHotel,

@@ -11,3 +11,10 @@ export const getHotelById = async (id) => {
   const response = await api.get(`/hotels/${id}`);
   return response;
 };
+
+export const searchAvailability = async (params = {}) => {
+  const query = new URLSearchParams(params).toString();
+  const url = query ? `/hotels/availability?${query}` : '/hotels/availability';
+  const response = await api.get(url);
+  return response;
+};

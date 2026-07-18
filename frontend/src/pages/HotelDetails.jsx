@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { getHotelById } from '../services/hotelService';
 import { getRoomsByHotel } from '../services/roomService';
 import { getHotelReviews, submitReview } from '../services/reviewService';
@@ -11,6 +11,11 @@ const HotelDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+
+  const checkInParam = searchParams.get('check_in') || '';
+  const checkOutParam = searchParams.get('check_out') || '';
+  const guestsParam = searchParams.get('guests') || '';
 
   const [hotel, setHotel] = useState(null);
   const [rooms, setRooms] = useState([]);
@@ -26,7 +31,7 @@ const HotelDetails = () => {
   const [reviewMessage, setReviewMessage] = useState({ type: '', text: '' });
 
   const handleBookNow = (room) => {
-    navigate('/book', { state: { room, hotel } });
+    navigate('/book', { state: { room, hotel, checkIn: checkInParam, checkOut: checkOutParam, guests: guestsParam } });
   };
 
   useEffect(() => {
@@ -34,16 +39,20 @@ const HotelDetails = () => {
       try {
         const promises = [
           getHotelById(id),
-          getRoomsByHotel(id),
+          getRoomsByHotel(id, {
+            check_in: checkInParam || undefined,
+            check_out: checkOutParam || undefined,
+            guests: guestsParam || undefined
+          }),
           getHotelReviews(id).catch(() => ({ data: { reviews: [] } }))
         ];
-        
+
         if (user) {
           promises.push(getMyFavorites().catch(() => ({ data: { data: { favorites: [] } } })));
         }
 
         const results = await Promise.all(promises);
-        
+
         setHotel(results[0].data?.data?.hotel);
         setRooms(results[1].data?.data?.rooms || []);
         setReviews(results[2].data?.data?.reviews || []);
@@ -110,7 +119,7 @@ const HotelDetails = () => {
   if (!hotel) return <div className="container mt-5 glass-card p-5 text-center"><h4>Hotel not found</h4></div>;
 
   // Calculate average rating
-  const avgRating = reviews.length > 0 
+  const avgRating = reviews.length > 0
     ? (reviews.reduce((acc, curr) => acc + curr.rating, 0) / reviews.length).toFixed(1)
     : 'New';
 
@@ -126,8 +135,8 @@ const HotelDetails = () => {
             <span className="text-white opacity-75 fs-5">
               <i className="bi bi-geo-alt-fill me-1"></i> {hotel.city}, Sri Lanka
             </span>
-            <button 
-              onClick={handleFavoriteToggle} 
+            <button
+              onClick={handleFavoriteToggle}
               disabled={favoriteLoading}
               className={`btn btn-sm rounded-pill px-3 ms-3 ${isFavorite ? 'btn-danger' : 'btn-outline-light'}`}
               aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
@@ -150,7 +159,7 @@ const HotelDetails = () => {
             <div className="modern-card p-5 mb-5 shadow-lg">
               <h3 className="font-serif fw-bold text-primary mb-4 border-bottom pb-3">About This Property</h3>
               <p className="lead text-muted" style={{ lineHeight: '1.8' }}>{hotel.description}</p>
-              
+
               <div className="row mt-5 g-4">
                 <div className="col-sm-4">
                   <div className="d-flex align-items-center text-primary bg-light p-3 rounded">
@@ -177,7 +186,7 @@ const HotelDetails = () => {
             <h3 className="font-serif fw-bold text-primary mb-4 d-flex align-items-center">
               <i className="bi bi-door-open-fill me-2 text-accent"></i> Available Rooms
             </h3>
-            
+
             {rooms.length === 0 ? (
               <div className="glass-card p-5 text-center">
                 <h5 className="text-muted font-serif">No rooms available for this hotel at the moment.</h5>
@@ -192,22 +201,22 @@ const HotelDetails = () => {
                     <div className="p-4 d-flex flex-column w-100 bg-white">
                       <div className="d-flex justify-content-between align-items-start mb-2">
                         <h4 className="fw-bold text-primary font-serif mb-0">Room {room.room_number}</h4>
-                        <span className={`status-badge ${room.availability_status === 'available' ? 'success' : 'danger'}`}>
-                          {room.availability_status}
+                        <span className={`status-badge ${room.is_available === 0 ? 'danger' : room.availability_status === 'available' ? 'success' : 'danger'}`}>
+                          {room.is_available === 0 ? 'Unavailable on selected dates' : room.availability_status}
                         </span>
                       </div>
                       <p className="text-muted text-capitalize mb-3 fs-5 border-bottom pb-2">
                         {room.room_type} Room &bull; Max {room.capacity} Guest{room.capacity > 1 ? 's' : ''}
                       </p>
-                      
+
                       <div className="d-flex justify-content-between align-items-end mt-auto pt-3">
                         <div>
                           <span className="fs-6 text-muted d-block mb-1">Price per night</span>
                           <span className="fs-3 fw-bold text-accent font-serif">{formatCurrency(room.price_per_night)}</span>
                         </div>
-                        <button 
-                          className="btn btn-primary px-4 btn-lg rounded-pill shadow-sm" 
-                          disabled={room.availability_status !== 'available'}
+                        <button
+                          className="btn btn-primary px-4 btn-lg rounded-pill shadow-sm"
+                          disabled={room.availability_status !== 'available' || room.is_available === 0}
                           onClick={() => handleBookNow(room)}
                         >
                           Book Now
@@ -233,9 +242,9 @@ const HotelDetails = () => {
                 <form onSubmit={handleReviewSubmit}>
                   <div className="mb-3">
                     <label className="form-label fw-bold">Rating</label>
-                    <select 
-                      className="form-select" 
-                      value={reviewData.rating} 
+                    <select
+                      className="form-select"
+                      value={reviewData.rating}
                       onChange={(e) => setReviewData({...reviewData, rating: Number(e.target.value)})}
                     >
                       <option value="5">5 - Excellent</option>
@@ -247,10 +256,10 @@ const HotelDetails = () => {
                   </div>
                   <div className="mb-3">
                     <label className="form-label fw-bold">Comment (Optional)</label>
-                    <textarea 
-                      className="form-control" 
-                      rows="3" 
-                      value={reviewData.comment} 
+                    <textarea
+                      className="form-control"
+                      rows="3"
+                      value={reviewData.comment}
                       onChange={(e) => setReviewData({...reviewData, comment: e.target.value})}
                     ></textarea>
                   </div>
@@ -296,15 +305,15 @@ const HotelDetails = () => {
               </div>
               <ul className="list-unstyled mb-0">
                 <li className="mb-3 d-flex align-items-start">
-                  <i className="bi bi-geo-alt-fill me-3 text-accent fs-5 mt-1"></i> 
+                  <i className="bi bi-geo-alt-fill me-3 text-accent fs-5 mt-1"></i>
                   <span className="opacity-90">{hotel.address}, {hotel.city}, Sri Lanka</span>
                 </li>
                 <li className="mb-3 d-flex align-items-center">
-                  <i className="bi bi-telephone-fill me-3 text-accent fs-5"></i> 
+                  <i className="bi bi-telephone-fill me-3 text-accent fs-5"></i>
                   <span className="opacity-90">+94 77 123 4567</span>
                 </li>
                 <li className="mb-0 d-flex align-items-center">
-                  <i className="bi bi-envelope-fill me-3 text-accent fs-5"></i> 
+                  <i className="bi bi-envelope-fill me-3 text-accent fs-5"></i>
                   <span className="opacity-90">reservations@ceylonstays.lk</span>
                 </li>
               </ul>

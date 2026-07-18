@@ -22,6 +22,7 @@ const router     = express.Router();
 
 const {
   getAllHotels,
+  searchAvailability,
   getHotelById,
   createHotel,
   updateHotel,
@@ -35,6 +36,9 @@ const { adminOnly } = require("../middleware/adminMiddleware");
 
 // GET /api/v1/hotels          ?city=Miami | ?search=grand
 router.get("/", getAllHotels);
+
+// GET /api/v1/hotels/availability
+router.get("/availability", searchAvailability);
 
 // GET /api/v1/hotels/:id
 router.get("/:id", getHotelById);
