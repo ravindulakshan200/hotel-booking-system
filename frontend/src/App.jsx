@@ -12,6 +12,10 @@ import Hotels from './pages/Hotels';
 import HotelDetails from './pages/HotelDetails';
 import MyBookings from './pages/MyBookings';
 import Booking from './pages/Booking';
+import Profile from './pages/Profile';
+import Favorites from './pages/Favorites';
+import MyPayments from './pages/MyPayments';
+import NotFound from './pages/NotFound';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminHotels from './pages/admin/AdminHotels';
 import AdminRooms from './pages/admin/AdminRooms';
@@ -59,6 +63,30 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Booking />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/favorites"
+              element={
+                <ProtectedRoute>
+                  <Favorites />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/my-payments"
+              element={
+                <ProtectedRoute>
+                  <MyPayments />
                 </ProtectedRoute>
               }
             />
@@ -118,6 +146,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </AppLayout>
       </Router>

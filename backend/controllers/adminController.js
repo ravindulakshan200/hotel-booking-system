@@ -51,10 +51,16 @@ const getAnalytics = async (req, res, next) => {
         h.name,
         h.city,
         COUNT(b.id)                         AS total_bookings,
-        COALESCE(SUM(b.total_price), 0)     AS total_revenue
+        COALESCE(SUM(p.paid_amount), 0)     AS total_revenue
       FROM hotels h
       LEFT JOIN rooms r ON r.hotel_id = h.id
       LEFT JOIN bookings b ON b.room_id = r.id AND b.booking_status != 'cancelled'
+      LEFT JOIN (
+        SELECT booking_id, SUM(amount) AS paid_amount
+        FROM payments
+        WHERE payment_status = 'completed'
+        GROUP BY booking_id
+      ) p ON p.booking_id = b.id
       GROUP BY h.id, h.name, h.city
       ORDER BY total_bookings DESC
       LIMIT 5
@@ -82,6 +88,9 @@ const getAnalytics = async (req, res, next) => {
 const getAllUsers = async (req, res, next) => {
   try {
     const { role } = req.query;
+    if (role && !["admin", "customer"].includes(role)) {
+      return res.status(400).json({ success: false, message: "Invalid role filter." });
+    }
     const users = await User.findAll({ role });
 
     return res.status(200).json({
@@ -151,12 +160,7 @@ const updateBookingStatus = async (req, res, next) => {
       });
     }
 
-    const booking = await Booking.findById(id);
-    if (!booking) {
-      return res.status(404).json({ success: false, message: "Booking not found." });
-    }
-
-    await Booking.updateStatus(id, status);
+    await Booking.updateStatusAtomic(id, status);
     const updated = await Booking.findById(id);
 
     return res.status(200).json({

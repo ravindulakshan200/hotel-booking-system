@@ -16,7 +16,6 @@ const AdminLayout = ({ children, title }) => {
 
   return (
     <div className="admin-layout fade-in">
-      {/* Sidebar */}
       <aside className="admin-sidebar sticky-top h-100" style={{ maxHeight: '100vh', overflowY: 'auto' }}>
         <div className="mb-5 text-center px-3">
           <Link to="/" className="text-white text-decoration-none d-flex flex-column align-items-center">
@@ -27,7 +26,7 @@ const AdminLayout = ({ children, title }) => {
           </Link>
           <p className="text-white opacity-75 small mt-2 mb-0">Welcome, {user?.first_name}</p>
         </div>
-        
+
         <nav className="d-flex flex-column gap-2 mb-auto">
           <NavLink to="/admin" end className={navLinkClass}><i className="bi bi-speedometer2 text-accent"></i> Dashboard</NavLink>
           <NavLink to="/admin/hotels" className={navLinkClass}><i className="bi bi-building text-accent"></i> Hotels</NavLink>
@@ -37,14 +36,13 @@ const AdminLayout = ({ children, title }) => {
           <NavLink to="/admin/payments" className={navLinkClass}><i className="bi bi-credit-card text-accent"></i> Payments</NavLink>
           <NavLink to="/admin/reviews" className={navLinkClass}><i className="bi bi-star text-accent"></i> Reviews</NavLink>
         </nav>
-        
+
         <div className="mt-5 pt-4 border-top border-secondary">
           <Link to="/" className="btn btn-outline-light w-100 mb-3 rounded-pill">View Public Site</Link>
           <button className="btn btn-danger w-100 rounded-pill" onClick={handleLogout}>Log Out</button>
         </div>
       </aside>
-      
-      {/* Main Content */}
+
       <main className="admin-content bg-light">
         <div className="container-fluid py-2">
           {title && (
@@ -56,7 +54,9 @@ const AdminLayout = ({ children, title }) => {
               </div>
             </div>
           )}
-          {children}
+          <div className="premium-card p-3 p-md-4">
+            {children}
+          </div>
         </div>
       </main>
     </div>

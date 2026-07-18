@@ -4,6 +4,7 @@
  */
 
 const pool = require("../config/db");
+const HttpError = require("../utils/httpError");
 
 const Payment = {
   findAll: async (filters = {}) => {
@@ -76,28 +77,123 @@ const Payment = {
     return rows[0] || null;
   },
 
-  create: async ({ booking_id, payment_method, amount, payment_status, transaction_reference }) => {
-    const [result] = await pool.query(
-      `INSERT INTO payments (booking_id, payment_method, amount, payment_status, transaction_reference)
-       VALUES (?, ?, ?, ?, ?)`,
-      [
-        booking_id,
-        payment_method,
-        amount,
-        payment_status || "pending",
-        transaction_reference || null,
-      ]
-    );
-    return result.insertId;
+  processAtomic: async ({ bookingId, paymentMethod, actorUserId, isAdmin = false }) => {
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [bookings] = await connection.query(
+        `SELECT id, user_id, total_price, booking_status
+         FROM bookings
+         WHERE id = ?
+         LIMIT 1
+         FOR UPDATE`,
+        [bookingId]
+      );
+      const booking = bookings[0];
+
+      if (!booking) throw new HttpError(404, "Booking not found.");
+      if (!isAdmin && booking.user_id !== actorUserId) {
+        throw new HttpError(403, "Access denied.");
+      }
+      if (booking.booking_status !== "pending") {
+        throw new HttpError(409, "Only pending bookings can be paid.");
+      }
+
+      const [existing] = await connection.query(
+        `SELECT id FROM payments
+         WHERE booking_id = ? AND payment_status = 'completed'
+         LIMIT 1`,
+        [bookingId]
+      );
+      if (existing.length > 0) {
+        throw new HttpError(409, "This booking has already been paid.");
+      }
+
+      const transactionReference = `DEMO-${Date.now()}-${bookingId}`;
+      const [result] = await connection.query(
+        `INSERT INTO payments
+           (booking_id, payment_method, amount, payment_status, transaction_reference)
+         VALUES (?, ?, ?, 'completed', ?)`,
+        [bookingId, paymentMethod, booking.total_price, transactionReference]
+      );
+      await connection.query(
+        "UPDATE bookings SET booking_status = 'confirmed' WHERE id = ?",
+        [bookingId]
+      );
+      await connection.commit();
+      return result.insertId;
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   },
 
-  updateStatus: async (id, status) => {
-    const [result] = await pool.query(
-      "UPDATE payments SET payment_status = ? WHERE id = ?",
-      [status, id]
-    );
-    return result.affectedRows;
+  refundAtomic: async (paymentId) => {
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [paymentLookup] = await connection.query(
+        `SELECT id, booking_id, payment_status
+         FROM payments
+         WHERE id = ?
+         LIMIT 1`,
+        [paymentId]
+      );
+      const paymentToLock = paymentLookup[0];
+
+      if (!paymentToLock) throw new HttpError(404, "Payment not found.");
+
+      // Keep the lock order consistent with booking cancellation: booking first,
+      // then payment. This avoids deadlocks when both actions happen together.
+      await connection.query(
+        `SELECT id
+         FROM bookings
+         WHERE id = ?
+         LIMIT 1
+         FOR UPDATE`,
+        [paymentToLock.booking_id]
+      );
+
+      const [rows] = await connection.query(
+        `SELECT id, booking_id, payment_status
+         FROM payments
+         WHERE id = ?
+         LIMIT 1
+         FOR UPDATE`,
+        [paymentId]
+      );
+      const payment = rows[0];
+
+      if (!payment) throw new HttpError(404, "Payment not found.");
+      if (payment.payment_status !== "completed") {
+        throw new HttpError(400, "Only completed payments can be refunded.");
+      }
+
+      await connection.query(
+        "UPDATE payments SET payment_status = 'refunded' WHERE id = ?",
+        [paymentId]
+      );
+      await connection.query(
+        `UPDATE bookings
+         SET booking_status = CASE
+           WHEN booking_status = 'completed' THEN 'completed'
+           ELSE 'cancelled'
+         END
+         WHERE id = ?`,
+        [payment.booking_id]
+      );
+      await connection.commit();
+      return payment.booking_id;
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   },
+
 };
 
 module.exports = Payment;

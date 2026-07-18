@@ -105,8 +105,8 @@ Represents an individual bookable room within a hotel.
 | `hotel_id` | `INT` | NOT NULL, FK → hotels.id | Parent hotel |
 | `room_number` | `VARCHAR(20)` | NOT NULL | Physical room identifier (e.g., "301", "PH01") |
 | `room_type` | `ENUM('single','double','suite','deluxe')` | NOT NULL | Room category |
-| `price_per_night` | `DECIMAL(10,2)` | NOT NULL | Nightly rate in USD |
-| `capacity` | `TINYINT` | NOT NULL, DEFAULT 1 | Maximum guest count |
+| `price_per_night` | `DECIMAL(10,2)` | NOT NULL, > 0 | Nightly rate in LKR |
+| `capacity` | `TINYINT` | NOT NULL, 1–20, DEFAULT 1 | Maximum guest count |
 | `availability_status` | `ENUM('available','booked','maintenance')` | NOT NULL, DEFAULT 'available' | Current room state |
 | `image_url` | `VARCHAR(500)` | NULL | Primary photo URL |
 | `created_at` | `TIMESTAMP` | DEFAULT CURRENT_TIMESTAMP | Record creation time |
@@ -150,7 +150,7 @@ Records a financial transaction associated with a booking.
 | `transaction_reference` | `VARCHAR(255)` | NULL, UNIQUE | External gateway reference ID |
 | `created_at` | `TIMESTAMP` | DEFAULT CURRENT_TIMESTAMP | Record creation time |
 
-> **Immutability:** Payments have no `updated_at` column by design. Payment records are treated as **immutable audit entries**. Refunds create a new payment record with a negative or reversed amount rather than mutating the original.
+> **Demo lifecycle:** This portfolio project does not process real money. A payment record can move from `completed` to `refunded`; the associated booking is cancelled unless the stay was already completed.
 
 ---
 
@@ -191,7 +191,7 @@ rooms.id  ←──FK──  bookings.room_id
 bookings.id  ←──FK──  payments.booking_id
 ```
 - Each booking has **one primary payment**.
-- The schema allows multiple payment rows per booking (`1:N`) to support **refund records** without mutation.
+- The schema allows multiple attempts, while the application permits only one completed payment at a time.
 - **ON DELETE RESTRICT:** A booking with a payment record cannot be deleted — it must be cancelled via status update.
 - **ON UPDATE CASCADE:** Booking PK changes propagate to payments.
 
@@ -235,6 +235,7 @@ All primary keys use `INT AUTO_INCREMENT` for simplicity and join performance. F
 | `idx_rooms_type_price` | `rooms` | `(room_type, price_per_night)` | INDEX | Sort/filter by type and price range |
 | `idx_bookings_user_id` | `bookings` | `user_id` | INDEX | "My bookings" user query |
 | `idx_bookings_room_id` | `bookings` | `room_id` | INDEX | Room availability overlap check |
+| `idx_bookings_room_overlap` | `bookings` | `(room_id, booking_status, check_in, check_out)` | INDEX | Transaction-safe overlap check |
 | `idx_bookings_status` | `bookings` | `booking_status` | INDEX | Admin filter by status |
 | `idx_bookings_dates` | `bookings` | `(check_in, check_out)` | INDEX | Date-range overlap queries |
 | `idx_payments_booking_id` | `payments` | `booking_id` | INDEX | Payment lookup for a booking |
@@ -248,10 +249,11 @@ All primary keys use `INT AUTO_INCREMENT` for simplicity and join performance. F
 |--------|-------|---------|
 | Admin users | 1 | `admin@hotelbooking.com` |
 | Customer users | 2 | `john.doe@example.com`, `jane.smith@example.com` |
-| Hotels | 3 | Miami, Aspen, New York |
-| Rooms | 10 | 4 (Miami) + 3 (Aspen) + 3 (New York) |
+| Hotels | 6 | Colombo, Kandy, Galle, Ella, Sigiriya, Bentota |
+| Rooms | 16 | Rooms distributed across the 6 Sri Lankan hotels |
+| Reviews | 6 | Sample verified-style review records |
 
-> ⚠️ **All seed passwords are plain-text placeholders.** Replace with `bcrypt.hashSync('password', 12)` before running in any shared or live environment.
+> The seed passwords are bcrypt hashes for local development. Replace all demo accounts and credentials before using a shared environment.
 
 ---
 
@@ -260,16 +262,16 @@ All primary keys use `INT AUTO_INCREMENT` for simplicity and join performance. F
 ### Short-Term (Phase 2–3)
 - **Room images:** Add a separate `room_images` table (`id`, `room_id`, `url`, `sort_order`) to support multiple photos per room instead of a single `image_url` column.
 - **Hotel amenities:** Add an `amenities` table with a `hotel_amenities` junction table (many-to-many).
-- **Reviews:** Add a `reviews` table (`id`, `user_id`, `hotel_id`, `rating`, `comment`, `created_at`).
+- **Review moderation:** Add report/review queues and audit history.
 
 ### Medium-Term (Phase 4–5)
-- **Booking overlap prevention:** Add a MySQL stored procedure or enforce via app-layer query:
+- **Booking overlap prevention:** The application already uses a transaction and room-row lock. A stored procedure can be considered if multiple services later write bookings directly:
   ```sql
   SELECT id FROM bookings
   WHERE room_id = ? AND booking_status != 'cancelled'
     AND check_in < ? AND check_out > ?
   ```
-- **Currency support:** Add a `currency` column (`CHAR(3)`, DEFAULT `'USD'`) to `payments` for multi-currency support.
+- **Currency support:** Add a `currency` column (`CHAR(3)`, DEFAULT `'LKR'`) to `payments` for multi-currency support.
 - **Soft deletes:** Add `deleted_at TIMESTAMP NULL` to `users`, `hotels`, and `rooms` for recoverable deletion.
 
 ### Long-Term (Phase 6+)

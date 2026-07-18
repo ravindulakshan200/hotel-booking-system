@@ -24,7 +24,7 @@
 const bcrypt = require("bcryptjs");
 const pool   = require("../config/db");
 
-const SALT_ROUNDS = 10;
+const SALT_ROUNDS = 12;
 
 const User = {
   /**
@@ -122,9 +122,13 @@ const User = {
     for (const field of allowedFields) {
       if (updates[field] !== undefined) {
         setClauses.push(`${field} = ?`);
-        params.push(
-          typeof updates[field] === "string" ? updates[field].trim() : updates[field]
-        );
+        if (field === "phone" && (updates[field] === null || updates[field].trim() === "")) {
+          params.push(null);
+        } else {
+          params.push(
+            typeof updates[field] === "string" ? updates[field].trim() : updates[field]
+          );
+        }
       }
     }
 

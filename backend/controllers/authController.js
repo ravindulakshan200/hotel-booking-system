@@ -16,7 +16,12 @@
 const bcrypt       = require("bcryptjs");
 const User         = require("../models/User");
 const generateToken = require("../utils/generateToken");
-const { validateRegisterInput, validateLoginInput } = require("../utils/validators");
+const {
+  validateRegisterInput,
+  validateLoginInput,
+  validateProfileInput,
+  validatePasswordChangeInput,
+} = require("../utils/validators");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // REGISTER
@@ -183,23 +188,13 @@ const updateProfile = async (req, res, next) => {
   try {
     const { first_name, last_name, phone } = req.body;
 
-    const hasAnyField = [first_name, last_name, phone].some(
-      (v) => v !== undefined && v !== null
-    );
-
-    if (!hasAnyField) {
+    const { valid, errors } = validateProfileInput(req.body);
+    if (!valid) {
       return res.status(400).json({
         success: false,
-        message: "Provide at least one field to update (first_name, last_name, phone).",
+        message: "Validation failed.",
+        errors,
       });
-    }
-
-    if (first_name !== undefined && (!first_name || first_name.trim().length === 0)) {
-      return res.status(400).json({ success: false, message: "first_name cannot be empty." });
-    }
-
-    if (last_name !== undefined && (!last_name || last_name.trim().length === 0)) {
-      return res.status(400).json({ success: false, message: "last_name cannot be empty." });
     }
 
     await User.updateProfile(req.user.id, { first_name, last_name, phone });
@@ -224,17 +219,12 @@ const changePassword = async (req, res, next) => {
   try {
     const { current_password, new_password } = req.body;
 
-    if (!current_password || !new_password) {
+    const { valid, errors } = validatePasswordChangeInput(req.body);
+    if (!valid) {
       return res.status(400).json({
         success: false,
-        message: "current_password and new_password are required.",
-      });
-    }
-
-    if (new_password.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: "new_password must be at least 6 characters.",
+        message: "Validation failed.",
+        errors,
       });
     }
 

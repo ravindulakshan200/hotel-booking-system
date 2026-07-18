@@ -21,7 +21,7 @@ const pool = mysql.createPool({
   port: process.env.DB_PORT || 3306,
   user: process.env.DB_USER || "root",
   password: process.env.DB_PASSWORD || "",
-  database: process.env.DB_NAME || "hotel_booking_system",
+  database: process.env.DB_NAME || "hotel_booking_db",
   waitForConnections: true,
   connectionLimit: 10,       // Maximum simultaneous connections
   queueLimit: 0,             // Unlimited queued requests

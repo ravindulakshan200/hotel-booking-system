@@ -44,7 +44,6 @@ const Home = () => {
 
   return (
     <div className="home-page page-wrapper fade-in">
-      {/* ── Hero Section ── */}
       <section className="hero-section">
         <div className="hero-overlay"></div>
         <div className="container hero-content text-center">
@@ -53,9 +52,7 @@ const Home = () => {
               🌴 DISCOVER SRI LANKA
             </span>
           </div>
-          <h1 className="hero-title slide-up delay-100">
-            Your Perfect Stay<br />Awaits in Lanka
-          </h1>
+          <h1 className="hero-title slide-up delay-100">Your Perfect Stay<br />Awaits in Lanka</h1>
           <p className="hero-subtitle slide-up delay-200">
             From sunlit beaches in Bentota to misty tea-country escapes in Ella.<br />
             Discover the pearl of the Indian Ocean with effortless island stays.
@@ -81,6 +78,14 @@ const Home = () => {
             </div>
           </form>
 
+          <div className="hero-floating-card slide-up delay-400">
+            <div className="d-flex flex-wrap justify-content-center gap-2">
+              <span className="feature-pill"><i className="bi bi-stars"></i>Best rates in LKR</span>
+              <span className="feature-pill"><i className="bi bi-shield-check"></i>Flexible stays</span>
+              <span className="feature-pill"><i className="bi bi-globe2"></i>Curated island escapes</span>
+            </div>
+          </div>
+
           <div className="mt-4 slide-up delay-400 d-flex gap-3 justify-content-center flex-wrap">
             <Link to="/hotels" className="btn btn-accent btn-lg px-5">
               <i className="bi bi-building me-2"></i>Explore All Hotels
@@ -92,8 +97,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* ── Features ── */}
-      <section className="container py-5 mt-4">
+      <section className="container premium-section">
         <div className="row g-4 text-center">
           {[
             { icon: '🏨', title: 'Handpicked Hotels', desc: 'Curated selection of premium hotels across Sri Lanka\'s most beautiful destinations.', delay: '' },
@@ -102,7 +106,7 @@ const Home = () => {
             { icon: '🌴', title: 'Local Expertise', desc: 'Discover hidden gems with our deep knowledge of Sri Lankan hospitality.', delay: 'delay-300' },
           ].map(({ icon, title, desc, delay }) => (
             <div key={title} className="col-md-6 col-lg-3">
-              <div className={`glass-card h-100 p-4 hover-lift slide-up ${delay}`} style={{ cursor: 'default' }}>
+              <div className={`premium-card h-100 p-4 hover-lift slide-up ${delay}`} style={{ cursor: 'default' }}>
                 <div className="mb-3" style={{ fontSize: '2.5rem' }}>{icon}</div>
                 <h5 className="fw-bold mb-2 font-serif">{title}</h5>
                 <p className="text-muted small mb-0" style={{ lineHeight: '1.7' }}>{desc}</p>
@@ -112,7 +116,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* ── Popular Destinations ── */}
       <section className="py-5 bg-white">
         <div className="container py-3">
           <div className="text-center mb-5">
@@ -137,7 +140,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* ── Featured Hotels ── */}
       <section className="py-5" style={{ background: 'var(--color-bg)' }}>
         <div className="container py-4">
           <div className="text-center mb-5">
@@ -159,10 +161,7 @@ const Home = () => {
               {featuredHotels.map((hotel, index) => (
                 <div key={hotel.id} className="col-md-6 col-lg-4 slide-up" style={{ animationDelay: `${index * 80}ms` }}>
                   <div className="modern-card hover-lift h-100 d-flex flex-column">
-                    <div
-                      className="image-card-header"
-                      style={{ backgroundImage: `url(https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80)` }}
-                    >
+                    <div className="image-card-header" style={{ backgroundImage: `url(https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80)` }}>
                       <span className="image-card-badge">★ 4.8</span>
                     </div>
                     <div className="card-body d-flex flex-column p-4">

@@ -21,6 +21,7 @@
 
 const jwt  = require("jsonwebtoken");
 const User = require("../models/User");
+const { getJwtSecret } = require("../config/env");
 
 /**
  * protect
@@ -43,7 +44,7 @@ const protect = async (req, res, next) => {
     // ── 2. Verify the token ──────────────────────────────────────────────────
     let decoded;
     try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
+      decoded = jwt.verify(token, getJwtSecret());
     } catch (jwtError) {
       // Distinguish between expired and malformed tokens for clearer messages
       const message =

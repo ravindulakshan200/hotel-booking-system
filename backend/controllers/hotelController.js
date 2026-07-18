@@ -68,6 +68,12 @@ const validateHotelInput = ({ name, address, city }, requireAll = true) => {
 const getAllHotels = async (req, res, next) => {
   try {
     const { city, search } = req.query;
+    if ((city && typeof city !== "string") || (search && typeof search !== "string")) {
+      return res.status(400).json({ success: false, message: "city and search filters must be text." });
+    }
+    if ((city && city.length > 100) || (search && search.length > 150)) {
+      return res.status(400).json({ success: false, message: "Search filter is too long." });
+    }
     const hotels = await Hotel.findAll({ city, search });
 
     return res.status(200).json({

@@ -16,13 +16,28 @@ const errorHandler = (err, req, res, next) => {
     console.error("❌ Error:", err.stack);
   }
 
-  const statusCode = err.statusCode || 500;
-  const message = err.message || "Internal Server Error";
+  let statusCode = err.statusCode || 500;
+  let message = err.message || "Internal Server Error";
+
+  if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
+    statusCode = 400;
+    message = "Invalid JSON request body.";
+  }
+
+  if (err.code === "ER_DUP_ENTRY") {
+    statusCode = 409;
+    message = "A record with the same unique value already exists.";
+  }
+
+  if (statusCode >= 500 && process.env.NODE_ENV === "production") {
+    message = "Internal Server Error";
+  }
 
   res.status(statusCode).json({
     success: false,
     message,
     // Expose stack trace only in development
+    ...(err.details && { errors: err.details }),
     ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
   });
 };

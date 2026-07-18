@@ -10,6 +10,11 @@ export const createBooking = async (bookingData) => {
   return response;
 };
 
+export const checkoutBooking = async (bookingData) => {
+  const response = await api.post('/bookings/checkout', bookingData);
+  return response;
+};
+
 export const cancelBooking = async (id) => {
   const response = await api.put(`/bookings/${id}/cancel`);
   return response;
