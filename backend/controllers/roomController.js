@@ -6,7 +6,7 @@
 
 const Room = require("../models/Room");
 const Hotel = require("../models/Hotel");
-const { validateBookingInput } = require("../utils/validators");
+const { validateBookingInput, validateAvailabilitySearch } = require("../utils/validators");
 
 const validateRoomInput = ({ hotel_id, room_number, room_type, price_per_night, capacity, availability_status }, requireAll = true) => {
   const errors = [];
@@ -43,7 +43,7 @@ const validateRoomInput = ({ hotel_id, room_number, room_type, price_per_night, 
       errors.push("capacity must be a positive integer");
     }
   }
-  
+
   if (requireAll || availability_status !== undefined) {
     const validStatuses = ['available', 'booked', 'maintenance'];
     if (!validStatuses.includes(availability_status)) {
@@ -56,7 +56,7 @@ const validateRoomInput = ({ hotel_id, room_number, room_type, price_per_night, 
 
 const getAllRooms = async (req, res, next) => {
   try {
-    const { hotel_id, room_type, availability_status } = req.query;
+    const { hotel_id, room_type, availability_status, check_in, check_out, guests, min_price, max_price } = req.query;
     const validTypes = ["single", "double", "suite", "deluxe"];
     const validStatuses = ["available", "booked", "maintenance"];
     if (hotel_id && (!Number.isInteger(Number(hotel_id)) || Number(hotel_id) < 1)) {
@@ -68,7 +68,31 @@ const getAllRooms = async (req, res, next) => {
     if (availability_status && !validStatuses.includes(availability_status)) {
       return res.status(400).json({ success: false, message: "Invalid availability_status filter." });
     }
-    const rooms = await Room.findAll({ hotel_id, room_type, availability_status });
+
+    if (check_in || check_out || guests) {
+      const { valid, errors } = validateAvailabilitySearch({ check_in, check_out, guests, min_price, max_price });
+      if (!valid) {
+        return res.status(400).json({ success: false, message: "Validation failed.", errors });
+      }
+    } else if (min_price !== undefined || max_price !== undefined) {
+      if (min_price !== undefined && (isNaN(Number(min_price)) || Number(min_price) < 0)) {
+        return res.status(400).json({ success: false, message: "Validation failed.", errors: ["min_price must be a positive number"] });
+      }
+      if (max_price !== undefined && (isNaN(Number(max_price)) || Number(max_price) < 0)) {
+        return res.status(400).json({ success: false, message: "Validation failed.", errors: ["max_price must be a positive number"] });
+      }
+    }
+
+    const rooms = await Room.findAll({
+      hotel_id,
+      room_type,
+      availability_status,
+      check_in,
+      check_out,
+      guests: guests ? Number(guests) : undefined,
+      min_price: min_price ? Number(min_price) : undefined,
+      max_price: max_price ? Number(max_price) : undefined
+    });
 
     return res.status(200).json({
       success: true,

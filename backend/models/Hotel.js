@@ -154,6 +154,67 @@ const Hotel = {
     );
     return result.affectedRows;
   },
+
+  /**
+   * findAvailable
+   * Search hotels based on room availability and filters.
+   */
+  findAvailable: async (filters = {}) => {
+    let sql = `
+      SELECT
+        h.id, h.name, h.address, h.city, h.description, h.created_at, h.updated_at,
+        COUNT(r.id) AS available_rooms,
+        MIN(r.price_per_night) AS starting_price
+      FROM hotels h
+      JOIN rooms r ON h.id = r.hotel_id
+      WHERE r.availability_status = 'available'
+    `;
+    const params = [];
+
+    if (filters.city) {
+      sql += " AND LOWER(h.city) = LOWER(?)";
+      params.push(filters.city.trim());
+    }
+    if (filters.guests) {
+      sql += " AND r.capacity >= ?";
+      params.push(filters.guests);
+    }
+    if (filters.room_type) {
+      sql += " AND r.room_type = ?";
+      params.push(filters.room_type);
+    }
+    if (filters.min_price) {
+      sql += " AND r.price_per_night >= ?";
+      params.push(filters.min_price);
+    }
+    if (filters.max_price) {
+      sql += " AND r.price_per_night <= ?";
+      params.push(filters.max_price);
+    }
+    if (filters.check_in && filters.check_out) {
+      sql += ` AND r.id NOT IN (
+        SELECT room_id FROM bookings
+        WHERE booking_status NOT IN ('cancelled', 'completed')
+          AND check_in < ? AND check_out > ?
+      )`;
+      params.push(filters.check_out, filters.check_in);
+    }
+
+    sql += " GROUP BY h.id";
+
+    if (filters.sort === 'price_low') {
+      sql += " ORDER BY starting_price ASC, h.name ASC";
+    } else if (filters.sort === 'price_high') {
+      sql += " ORDER BY starting_price DESC, h.name ASC";
+    } else if (filters.sort === 'name') {
+      sql += " ORDER BY h.name ASC";
+    } else {
+      sql += " ORDER BY h.created_at DESC";
+    }
+
+    const [rows] = await pool.query(sql, params);
+    return rows;
+  },
 };
 
 module.exports = Hotel;

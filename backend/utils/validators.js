@@ -125,6 +125,53 @@ const validateBookingInput = (body = {}) => {
   return { valid: errors.length === 0, errors };
 };
 
+const validateAvailabilitySearch = (query = {}) => {
+  const errors = [];
+  const { check_in, check_out, guests, min_price, max_price } = query;
+
+  if (!check_in) {
+    errors.push("check_in is required");
+  } else if (!parseDateOnly(check_in)) {
+    errors.push("check_in must use a valid YYYY-MM-DD date");
+  } else if (check_in < getTodayDateOnly()) {
+    errors.push("check_in cannot be in the past");
+  }
+
+  if (!check_out) {
+    errors.push("check_out is required");
+  } else if (!parseDateOnly(check_out)) {
+    errors.push("check_out must use a valid YYYY-MM-DD date");
+  }
+
+  if (parseDateOnly(check_in) && parseDateOnly(check_out) && calculateNights(check_in, check_out) < 1) {
+    errors.push("check_out must be after check_in");
+  }
+
+  if (!guests) {
+    errors.push("guests is required");
+  } else if (!Number.isInteger(Number(guests)) || Number(guests) < 1 || Number(guests) > 20) {
+    errors.push("guests must be an integer between 1 and 20");
+  }
+
+  if (min_price !== undefined) {
+    if (isNaN(Number(min_price)) || Number(min_price) < 0) {
+      errors.push("min_price must be a positive number");
+    }
+  }
+
+  if (max_price !== undefined) {
+    if (isNaN(Number(max_price)) || Number(max_price) < 0) {
+      errors.push("max_price must be a positive number");
+    }
+  }
+
+  if (min_price !== undefined && max_price !== undefined && Number(min_price) > Number(max_price)) {
+    errors.push("min_price cannot be greater than max_price");
+  }
+
+  return { valid: errors.length === 0, errors };
+};
+
 module.exports = {
   MIN_PASSWORD_LENGTH,
   MAX_PASSWORD_BYTES,
@@ -133,4 +180,5 @@ module.exports = {
   validateProfileInput,
   validatePasswordChangeInput,
   validateBookingInput,
+  validateAvailabilitySearch,
 };

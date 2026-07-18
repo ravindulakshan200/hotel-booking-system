@@ -15,7 +15,12 @@ const Home = () => {
   const [featuredHotels, setFeaturedHotels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchParams, setSearchParams] = useState({
+    city: '',
+    check_in: '',
+    check_out: '',
+    guests: 2
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -35,11 +40,13 @@ const Home = () => {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/hotels?search=${encodeURIComponent(searchQuery.trim())}`);
-    } else {
-      navigate('/hotels');
-    }
+    const query = new URLSearchParams();
+    if (searchParams.city) query.append('city', searchParams.city);
+    if (searchParams.check_in) query.append('check_in', searchParams.check_in);
+    if (searchParams.check_out) query.append('check_out', searchParams.check_out);
+    if (searchParams.guests) query.append('guests', searchParams.guests);
+
+    navigate(`/hotels?${query.toString()}`);
   };
 
   return (
@@ -58,21 +65,30 @@ const Home = () => {
             Discover the pearl of the Indian Ocean with effortless island stays.
           </p>
 
-          <form onSubmit={handleSearch} className="slide-up delay-300">
-            <div className="search-bar-wrapper mt-4 mx-auto">
-              <div className="input-group">
-                <span className="input-group-text">
-                  <i className="bi bi-search text-primary"></i>
-                </span>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Search by city or hotel name... (e.g. Kandy, Galle)"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                <button type="submit" className="btn btn-primary rounded-pill px-4 me-1" style={{ textTransform: 'none', fontSize: '0.9rem' }}>
-                  Search
+          <form onSubmit={handleSearch} className="slide-up delay-300 bg-white p-3 rounded-4 shadow-lg mx-auto" style={{ maxWidth: '900px', transform: 'translateY(15px)' }}>
+            <div className="row g-2 align-items-end text-start">
+              <div className="col-md-3">
+                <label className="form-label small fw-bold text-muted mb-1 px-1">Location</label>
+                <div className="input-group">
+                  <span className="input-group-text bg-light border-end-0 text-muted"><i className="bi bi-geo-alt"></i></span>
+                  <input type="text" className="form-control bg-light border-start-0 ps-0" placeholder="Where to?" value={searchParams.city} onChange={e => setSearchParams({...searchParams, city: e.target.value})} />
+                </div>
+              </div>
+              <div className="col-md-3">
+                <label className="form-label small fw-bold text-muted mb-1 px-1">Check-In</label>
+                <input type="date" className="form-control bg-light" min={new Date().toISOString().split('T')[0]} value={searchParams.check_in} onChange={e => setSearchParams({...searchParams, check_in: e.target.value})} required />
+              </div>
+              <div className="col-md-3">
+                <label className="form-label small fw-bold text-muted mb-1 px-1">Check-Out</label>
+                <input type="date" className="form-control bg-light" min={searchParams.check_in || new Date().toISOString().split('T')[0]} value={searchParams.check_out} onChange={e => setSearchParams({...searchParams, check_out: e.target.value})} required />
+              </div>
+              <div className="col-md-2">
+                <label className="form-label small fw-bold text-muted mb-1 px-1">Guests</label>
+                <input type="number" className="form-control bg-light" min="1" max="20" value={searchParams.guests} onChange={e => setSearchParams({...searchParams, guests: e.target.value})} required />
+              </div>
+              <div className="col-md-1">
+                <button type="submit" className="btn btn-primary w-100 p-2 rounded-3 h-100 d-flex align-items-center justify-content-center">
+                  <i className="bi bi-search fs-5"></i>
                 </button>
               </div>
             </div>

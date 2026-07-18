@@ -10,8 +10,8 @@ const Booking = () => {
   const room = location.state?.room;
   const hotel = location.state?.hotel;
 
-  const [checkIn, setCheckIn] = useState('');
-  const [checkOut, setCheckOut] = useState('');
+  const [checkIn, setCheckIn] = useState(location.state?.checkIn || '');
+  const [checkOut, setCheckOut] = useState(location.state?.checkOut || '');
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [totalNights, setTotalNights] = useState(0);
   const [totalPrice, setTotalPrice] = useState(0);
@@ -47,7 +47,7 @@ const Booking = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
+
     if (new Date(checkOut) <= new Date(checkIn)) {
       setError('Check-out date must be after check-in date.');
       return;
