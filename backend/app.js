@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 
-const { getAllowedOrigins } = require("./config/env");
+const { getAllowedOrigins, getTrustProxy } = require("./config/env");
 const HttpError = require("./utils/httpError");
 const errorHandler = require("./middleware/errorHandler");
 const notFound = require("./middleware/notFound");
@@ -22,6 +22,12 @@ const createApp = () => {
   const allowedOrigins = getAllowedOrigins();
 
   app.disable("x-powered-by");
+
+  const trustProxy = getTrustProxy();
+  if (trustProxy !== false) {
+    app.set("trust proxy", trustProxy);
+  }
+
   app.use(helmet());
   app.use(
     cors({

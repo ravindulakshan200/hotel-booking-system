@@ -21,6 +21,20 @@ const getAllowedOrigins = () => {
     .filter(Boolean);
 };
 
+const getTrustProxy = () => {
+  const value = process.env.TRUST_PROXY;
+  if (!value || value === "false") {
+    return false;
+  }
+  if (value === "true") {
+    return true;
+  }
+  if (/^\d+$/.test(value)) {
+    return parseInt(value, 10);
+  }
+  throw new Error("TRUST_PROXY must be 'true', 'false', or a non-negative integer hop count.");
+};
+
 const validateEnvironment = () => {
   const errors = [];
 
@@ -29,6 +43,12 @@ const validateEnvironment = () => {
     if (process.env.NODE_ENV === "production" && secret.length < 32) {
       errors.push("JWT_SECRET must contain at least 32 characters in production.");
     }
+  } catch (error) {
+    errors.push(error.message);
+  }
+
+  try {
+    getTrustProxy();
   } catch (error) {
     errors.push(error.message);
   }
@@ -43,4 +63,4 @@ const validateEnvironment = () => {
   }
 };
 
-module.exports = { getJwtSecret, getAllowedOrigins, validateEnvironment };
+module.exports = { getJwtSecret, getAllowedOrigins, getTrustProxy, validateEnvironment };

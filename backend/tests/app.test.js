@@ -59,3 +59,17 @@ test("malformed JSON returns 400 rather than 500", async () => {
   assert.equal(response.status, 400);
   assert.equal(body.message, "Invalid JSON request body.");
 });
+
+test("Express app receives the configured TRUST_PROXY value", () => {
+  const originalEnv = process.env.TRUST_PROXY;
+
+  process.env.TRUST_PROXY = "1";
+  const testApp1 = createApp();
+  assert.equal(testApp1.get("trust proxy"), 1);
+
+  delete process.env.TRUST_PROXY;
+  const testApp2 = createApp();
+  assert.equal(testApp2.get("trust proxy"), false);
+
+  process.env.TRUST_PROXY = originalEnv;
+});
