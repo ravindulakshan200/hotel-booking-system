@@ -13,8 +13,7 @@ const verifyDBConnection = async () => {
     console.log(`MySQL connected: ${process.env.DB_HOST || "localhost"}/${process.env.DB_NAME || "hotel_booking_db"}`);
     return true;
   } catch (error) {
-    console.warn(`MySQL is currently unavailable: ${error.message}`);
-    return false;
+    throw new Error(`MySQL is currently unavailable: ${error.message}`);
   }
 };
 
@@ -28,11 +27,14 @@ const startServer = async () => {
     console.log(`Server running on http://localhost:${port}`);
   });
 
+  let isShuttingDown = false;
+
   const shutdown = (signal) => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
     console.log(`${signal} received. Closing server...`);
     server.close(async () => {
       await pool.end();
-      process.exit(0);
     });
   };
 
@@ -41,12 +43,5 @@ const startServer = async () => {
 
   return server;
 };
-
-if (require.main === module) {
-  startServer().catch((error) => {
-    console.error(`Server startup failed: ${error.message}`);
-    process.exit(1);
-  });
-}
 
 module.exports = { startServer, verifyDBConnection };

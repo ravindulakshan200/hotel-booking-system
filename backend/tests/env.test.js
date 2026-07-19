@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { getJwtSecret, getAllowedOrigins, validateEnvironment } = require("../config/env");
+const { getJwtSecret, getAllowedOrigins, getTrustProxy, validateEnvironment } = require("../config/env");
 
 const originalEnv = { ...process.env };
 
@@ -27,4 +27,26 @@ test("multiple configured client origins are normalized", () => {
     "https://one.example",
     "https://two.example",
   ]);
+});
+
+test("TRUST_PROXY defaults to false", () => {
+  delete process.env.TRUST_PROXY;
+  assert.equal(getTrustProxy(), false);
+});
+
+test("TRUST_PROXY=true is parsed correctly", () => {
+  process.env.TRUST_PROXY = "true";
+  assert.equal(getTrustProxy(), true);
+});
+
+test("TRUST_PROXY=1 becomes numeric hop count 1", () => {
+  process.env.TRUST_PROXY = "1";
+  assert.equal(getTrustProxy(), 1);
+});
+
+test("TRUST_PROXY invalid values are rejected", () => {
+  process.env.TRUST_PROXY = "invalid";
+  assert.throws(() => getTrustProxy(), /non-negative integer hop count/);
+  process.env.TRUST_PROXY = "-1";
+  assert.throws(() => getTrustProxy(), /non-negative integer hop count/);
 });
