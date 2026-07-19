@@ -35,6 +35,34 @@ const getTrustProxy = () => {
   throw new Error("TRUST_PROXY must be 'true', 'false', or a non-negative integer hop count.");
 };
 
+const getDbSslConfig = () => {
+  const value = process.env.DB_SSL;
+  if (!value || value === "false") {
+    return false;
+  }
+  if (value === "true") {
+    const config = { rejectUnauthorized: true };
+    if (process.env.DB_SSL_CA_BASE64 !== undefined) {
+      const base64Str = process.env.DB_SSL_CA_BASE64.trim();
+      if (!base64Str) {
+        return config;
+      }
+      // Strict base64 validation
+      if (!/^[A-Za-z0-9+/]+={0,2}$/.test(base64Str) || base64Str.length % 4 !== 0) {
+        throw new Error("DB_SSL_CA_BASE64 must be a valid base64 string.");
+      }
+
+      const decoded = Buffer.from(base64Str, "base64").toString("utf-8");
+      if (!decoded.trim()) {
+        throw new Error("DB_SSL_CA_BASE64 decoded to an empty certificate.");
+      }
+      config.ca = decoded;
+    }
+    return config;
+  }
+  throw new Error("DB_SSL must be 'true', 'false', or unset.");
+};
+
 const validateEnvironment = () => {
   const errors = [];
 
@@ -53,6 +81,12 @@ const validateEnvironment = () => {
     errors.push(error.message);
   }
 
+  try {
+    getDbSslConfig();
+  } catch (error) {
+    errors.push(error.message);
+  }
+
   const port = Number(process.env.PORT || 5000);
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     errors.push("PORT must be an integer between 1 and 65535.");
@@ -63,4 +97,4 @@ const validateEnvironment = () => {
   }
 };
 
-module.exports = { getJwtSecret, getAllowedOrigins, getTrustProxy, validateEnvironment };
+module.exports = { getJwtSecret, getAllowedOrigins, getTrustProxy, getDbSslConfig, validateEnvironment };

@@ -13,6 +13,7 @@
 
 const mysql = require("mysql2/promise");
 const dotenv = require("dotenv");
+const { getDbSslConfig } = require("./env");
 
 dotenv.config();
 
@@ -22,6 +23,7 @@ const pool = mysql.createPool({
   user: process.env.DB_USER || "root",
   password: process.env.DB_PASSWORD || "",
   database: process.env.DB_NAME || "hotel_booking_db",
+  ...(getDbSslConfig() && { ssl: getDbSslConfig() }),
   waitForConnections: true,
   connectionLimit: 10,       // Maximum simultaneous connections
   queueLimit: 0,             // Unlimited queued requests
