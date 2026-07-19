@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test-only-secret-with-more-than-32-characters";
 process.env.CLIENT_URL = "http://localhost:5173";
 
+const pool = require("../config/db");
 const createApp = require("../app");
 const { getTodayDateOnly } = require("../utils/dateUtils");
 
@@ -18,6 +19,7 @@ test.before(async () => {
 
 test.after(async () => {
   await new Promise((resolve) => server.close(resolve));
+  await pool.end();
 });
 
 test("Availability search API", async (t) => {

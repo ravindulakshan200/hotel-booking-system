@@ -7,83 +7,161 @@ const pool = require("../config/db");
 const User = require("../models/User");
 const Booking = require("../models/Booking");
 
-// ─── DASHBOARD STATS ──────────────────────────────────────────────────────────
+// â”€â”€â”€ DASHBOARD STATS & ANALYTICS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+const getPeriodDates = (period) => {
+  const now = new Date();
+  let startDate = new Date();
+  let days = 0;
+
+  if (period === '7days') { startDate.setDate(now.getDate() - 7); days = 7; }
+  else if (period === '30days') { startDate.setDate(now.getDate() - 30); days = 30; }
+  else if (period === '6months') { startDate.setMonth(now.getMonth() - 6); days = 180; }
+  else if (period === '12months') { startDate.setMonth(now.getMonth() - 12); days = 365; }
+  else if (period === 'all') { startDate = new Date(0); days = 10000; }
+  else { return null; }
+
+  return {
+    startDate: startDate.toISOString().split('T')[0],
+    endDate: now.toISOString().split('T')[0],
+    days
+  };
+};
 
 const getDashboardStats = async (req, res, next) => {
   try {
-    const [[stats]] = await pool.query(`
+    const period = req.query.period || '30days';
+    const periodData = getPeriodDates(period);
+
+    if (!periodData) {
+      return res.status(400).json({ success: false, message: "Invalid period." });
+    }
+
+    const { startDate, endDate, days } = periodData;
+
+    // Overview stats
+    const [[overview]] = await pool.query(`
       SELECT
-        (SELECT COUNT(*) FROM users WHERE role = 'customer') AS total_customers,
-        (SELECT COUNT(*) FROM hotels)                         AS total_hotels,
-        (SELECT COUNT(*) FROM rooms)                          AS total_rooms,
-        (SELECT COUNT(*) FROM bookings)                       AS total_bookings,
-        (SELECT COUNT(*) FROM bookings WHERE booking_status = 'confirmed')  AS confirmed_bookings,
-        (SELECT COUNT(*) FROM bookings WHERE booking_status = 'pending')    AS pending_bookings,
-        (SELECT COUNT(*) FROM bookings WHERE booking_status = 'cancelled')  AS cancelled_bookings,
-        (SELECT COUNT(*) FROM bookings WHERE booking_status = 'completed')  AS completed_bookings,
+        (SELECT COUNT(*) FROM users WHERE role = 'customer') AS total_users,
+        (SELECT COUNT(*) FROM hotels) AS total_hotels,
+        (SELECT COUNT(*) FROM rooms) AS total_rooms,
+        (SELECT COUNT(*) FROM bookings) AS total_bookings,
+        (SELECT COUNT(*) FROM bookings WHERE booking_status = 'pending') AS pending_bookings,
+        (SELECT COUNT(*) FROM bookings WHERE booking_status = 'confirmed') AS confirmed_bookings,
+        (SELECT COUNT(*) FROM bookings WHERE booking_status = 'completed') AS completed_bookings,
+        (SELECT COUNT(*) FROM bookings WHERE booking_status = 'cancelled') AS cancelled_bookings,
         (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payment_status = 'completed') AS total_revenue,
-        (SELECT COUNT(*) FROM reviews) AS total_reviews
-    `);
+        (
+          SELECT COALESCE(SUM(amount), 0) FROM payments p
+          JOIN bookings b ON b.id = p.booking_id
+          WHERE p.payment_status = 'completed' AND b.created_at >= ?
+        ) AS period_revenue,
+        (
+          SELECT COALESCE(AVG(total_price), 0) FROM bookings
+          WHERE booking_status IN ('confirmed', 'completed') AND created_at >= ?
+        ) AS avg_booking_value
+    `, [startDate, startDate]);
 
-    const recentBookings = await Booking.findAll({ limit: 5 });
-
-    return res.status(200).json({
-      success: true,
-      message: "Dashboard stats fetched successfully.",
-      data: { stats, recentBookings },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// ─── ANALYTICS ────────────────────────────────────────────────────────────────
-
-const getAnalytics = async (req, res, next) => {
-  try {
-    // Monthly revenue for last 6 months
-    const monthlyRevenue = await Booking.getMonthlyRevenue();
-
-    // Top 5 hotels by booking count
-    const [topHotels] = await pool.query(`
+    // Occupancy calculation (occupied room-nights / available room-nights * 100)
+    // Counts intersection of booking dates with the selected period window
+    const [[occupancyData]] = await pool.query(`
       SELECT
-        h.id,
-        h.name,
-        h.city,
-        COUNT(b.id)                         AS total_bookings,
-        COALESCE(SUM(p.paid_amount), 0)     AS total_revenue
+        COALESCE(SUM(
+          DATEDIFF(
+            LEAST(check_out, ?),
+            GREATEST(check_in, ?)
+          )
+        ), 0) AS occupied_room_nights
+      FROM bookings
+      WHERE booking_status IN ('confirmed', 'completed')
+        AND check_in < ? AND check_out > ?
+    `, [endDate, startDate, endDate, startDate]);
+
+    const totalRooms = overview.total_rooms || 0;
+    // Limit available room nights to 1 yr for 'all' to prevent highly skewed denominator
+    const availableRoomNights = totalRooms * (days === 10000 ? 365 : days);
+    const occupiedNights = occupancyData.occupied_room_nights;
+    let occupancyRate = availableRoomNights > 0 ? (occupiedNights / availableRoomNights) * 100 : 0;
+    occupancyRate = Math.max(0, Math.min(100, occupancyRate));
+
+    // Booking Trend
+    const groupBy = (days <= 30) ? "DATE_FORMAT(created_at, '%Y-%m-%d')" : "DATE_FORMAT(created_at, '%Y-%m')";
+    const [bookingTrend] = await pool.query(`
+      SELECT ${groupBy} AS label, COUNT(*) AS bookings, COALESCE(SUM(total_price), 0) AS revenue
+      FROM bookings
+      WHERE created_at >= ?
+      GROUP BY label
+      ORDER BY label ASC
+    `, [startDate]);
+
+    // Status breakdown
+    const [statusBreakdown] = await pool.query(`
+      SELECT booking_status AS name, COUNT(*) AS value
+      FROM bookings
+      WHERE created_at >= ?
+      GROUP BY booking_status
+    `, [startDate]);
+
+    // Popular hotels
+    const [popularHotels] = await pool.query(`
+      SELECT h.name, COUNT(b.id) AS bookings
       FROM hotels h
-      LEFT JOIN rooms r ON r.hotel_id = h.id
-      LEFT JOIN bookings b ON b.room_id = r.id AND b.booking_status != 'cancelled'
-      LEFT JOIN (
-        SELECT booking_id, SUM(amount) AS paid_amount
-        FROM payments
-        WHERE payment_status = 'completed'
-        GROUP BY booking_id
-      ) p ON p.booking_id = b.id
-      GROUP BY h.id, h.name, h.city
-      ORDER BY total_bookings DESC
+      JOIN rooms r ON r.hotel_id = h.id
+      JOIN bookings b ON b.room_id = r.id
+      WHERE b.booking_status IN ('confirmed', 'completed') AND b.created_at >= ?
+      GROUP BY h.id, h.name
+      ORDER BY bookings DESC
       LIMIT 5
+    `, [startDate]);
+
+    // Recent bookings
+    const [recentBookings] = await pool.query(`
+      SELECT b.id, b.check_in, b.check_out, b.total_price, b.booking_status, b.created_at,
+             u.first_name, u.last_name,
+             h.name AS hotel_name, r.room_number
+      FROM bookings b
+      JOIN users u ON b.user_id = u.id
+      JOIN rooms r ON b.room_id = r.id
+      JOIN hotels h ON r.hotel_id = h.id
+      ORDER BY b.created_at DESC
+      LIMIT 10
     `);
 
-    // Booking status breakdown
-    const [statusBreakdown] = await pool.query(`
-      SELECT booking_status, COUNT(*) AS count
-      FROM bookings
-      GROUP BY booking_status
-    `);
+    const safeBookings = recentBookings.map(b => ({
+      id: b.id,
+      guest_name: `${b.first_name} ${b.last_name}`,
+      hotel_name: b.hotel_name,
+      room_number: b.room_number,
+      check_in: b.check_in,
+      check_out: b.check_out,
+      total_price: b.total_price,
+      status: b.booking_status,
+      created_at: b.created_at
+    }));
 
     return res.status(200).json({
       success: true,
       message: "Analytics fetched successfully.",
-      data: { monthlyRevenue, topHotels, statusBreakdown },
+      data: {
+        overview: {
+          ...overview,
+          occupancy_rate: occupancyRate
+        },
+        charts: {
+          bookingTrend,
+          statusBreakdown,
+          popularHotels
+        },
+        recentBookings: safeBookings
+      }
     });
+
   } catch (error) {
     next(error);
   }
 };
 
-// ─── USER MANAGEMENT ─────────────────────────────────────────────────────────
+// â”€â”€â”€ USER MANAGEMENT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const getAllUsers = async (req, res, next) => {
   try {
@@ -135,14 +213,14 @@ const deleteUser = async (req, res, next) => {
     if (error.code === "ER_ROW_IS_REFERENCED_2") {
       return res.status(409).json({
         success: false,
-        message: "Cannot delete user — they have existing bookings or reviews.",
+        message: "Cannot delete user â€” they have existing bookings or reviews.",
       });
     }
     next(error);
   }
 };
 
-// ─── BOOKING MANAGEMENT ──────────────────────────────────────────────────────
+// â”€â”€â”€ BOOKING MANAGEMENT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const updateBookingStatus = async (req, res, next) => {
   try {
@@ -175,7 +253,6 @@ const updateBookingStatus = async (req, res, next) => {
 
 module.exports = {
   getDashboardStats,
-  getAnalytics,
   getAllUsers,
   deleteUser,
   updateBookingStatus,
