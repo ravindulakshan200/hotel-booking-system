@@ -1,7 +1,7 @@
 import api from '../api/axios';
 
-export const getDashboardStats = async () => {
-  const response = await api.get('/admin/dashboard');
+export const getDashboardStats = async (period = '30days') => {
+  const response = await api.get(`/admin/dashboard?period=${period}`);
   return response;
 };
 

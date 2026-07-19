@@ -1,6 +1,6 @@
 /**
  * routes/adminRoutes.js
- * Admin-only routes — all require protect + adminOnly middleware.
+ * Admin-only routes â€” all require protect + adminOnly middleware.
  */
 
 const express  = require("express");
@@ -8,7 +8,6 @@ const router   = express.Router();
 
 const {
   getDashboardStats,
-  getAnalytics,
   getAllUsers,
   deleteUser,
   updateBookingStatus,
@@ -20,11 +19,11 @@ const { adminOnly }  = require("../middleware/adminMiddleware");
 // Apply auth + admin guard to every route in this file
 router.use(protect, adminOnly);
 
-// Dashboard
+// Dashboard (handles overview, charts, and recent bookings with ?period filter)
 router.get("/dashboard", getDashboardStats);
 
-// Analytics
-router.get("/analytics", getAnalytics);
+// Alias for backward compatibility
+router.get("/analytics", getDashboardStats);
 
 // User management
 router.get("/users",          getAllUsers);
