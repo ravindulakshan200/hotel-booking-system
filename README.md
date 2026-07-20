@@ -100,9 +100,20 @@ Frontend:
 VITE_API_URL=http://localhost:5000/api/v1
 ```
 
-### 3. Create the database
+### 3. Database Setup
 
-Import [backend/database/database.sql](backend/database/database.sql). It creates and selects the `hotel_booking_db` database.
+**Local Development Setup:**
+First, create the database, then import the schema:
+```bash
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS hotel_booking_db;"
+mysql -u root -p hotel_booking_db < backend/database/database.sql
+```
+
+**Managed Cloud Database Setup:**
+Most cloud providers (like Aiven or Render) pre-create the database. Simply pipe the schema into your assigned database:
+```bash
+mysql -h <host> -P <port> -u <user> -p <database> < backend/database/database.sql
+```
 
 ### 4. Run the app
 
@@ -135,6 +146,16 @@ http://localhost:5000/api/v1
 - Rooms: `/rooms`, `/rooms/:id`
 - Bookings: `/bookings`, `/bookings/checkout`, `/bookings/my-bookings`, `/bookings/:id/cancel`
 - Admin: `/admin/dashboard`, `/admin/users`, `/admin/bookings/:id/status`
+
+---
+
+## ☁️ Deployment (Vercel)
+
+The frontend is optimized for static deployment on Vercel with SPA routing enabled.
+- **Root Directory**: `frontend`
+- **Build Command**: `npm run build`
+- **Output Directory**: `dist`
+- **Environment Variables**: Add `VITE_API_URL` pointing to your hosted backend.
 
 ---
 

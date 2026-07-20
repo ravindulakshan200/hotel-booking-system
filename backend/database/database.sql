@@ -19,12 +19,12 @@
 -- =============================================================================
 -- DATABASE
 -- =============================================================================
+-- Note: For local development, create the database first:
+--   mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS hotel_booking_db;"
+--   mysql -u root -p hotel_booking_db < database.sql
+-- Managed cloud providers usually pre-create the database for you.
+-- =============================================================================
 
-CREATE DATABASE IF NOT EXISTS hotel_booking_db
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_unicode_ci;
-
-USE hotel_booking_db;
 
 
 -- =============================================================================
