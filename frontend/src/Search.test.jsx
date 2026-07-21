@@ -11,7 +11,7 @@ vi.mock('./services/hotelService', () => ({
 }));
 
 describe('Search and Availability Flow', () => {
-  it('Home page renders search panel with correct inputs', () => {
+  it('Home page renders search panel with correct inputs', async () => {
     render(
       <MemoryRouter>
         <Home />
@@ -21,6 +21,10 @@ describe('Search and Availability Flow', () => {
     expect(screen.getByText(/Check-In/i)).toBeInTheDocument();
     expect(screen.getByText(/Check-Out/i)).toBeInTheDocument();
     expect(screen.getByText(/Guests/i)).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
   });
 
   it('Hotels page calls getHotels when no dates are provided', async () => {
