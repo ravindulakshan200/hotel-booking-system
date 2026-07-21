@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import AdminLayout from '../../layouts/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { getHotels } from '../../services/hotelService';
@@ -27,6 +28,21 @@ const AdminHotels = () => {
   };
 
   useEffect(() => { fetchHotels(); }, []);
+
+  useEffect(() => {
+    if (showModal) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      const handleEscape = (e) => {
+        if (e.key === 'Escape') setShowModal(false);
+      };
+      document.addEventListener('keydown', handleEscape);
+      return () => {
+        document.body.style.overflow = originalOverflow;
+        document.removeEventListener('keydown', handleEscape);
+      };
+    }
+  }, [showModal]);
 
   const openCreate = () => {
     setEditId(null);
@@ -101,9 +117,9 @@ const AdminHotels = () => {
         </div>
       )}
 
-      {showModal && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog">
+      {showModal && createPortal(
+        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => setShowModal(false)}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
             <div className="modal-content">
               <form onSubmit={handleSubmit}>
                 <div className="modal-header">
@@ -135,7 +151,8 @@ const AdminHotels = () => {
               </form>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </AdminLayout>
   );
