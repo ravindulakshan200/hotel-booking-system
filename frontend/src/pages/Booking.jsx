@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { checkoutBooking, createBooking } from '../services/bookingService';
-import { createCheckoutSession } from '../services/paymentService';
+import { createCheckoutSession, getPaymentConfig } from '../services/paymentService';
 import { formatCurrency } from '../utils/formatters';
 import { getLocalDateInputValue } from '../utils/dates';
 
@@ -25,6 +25,25 @@ const Booking = () => {
       navigate('/hotels');
     }
   }, [room, navigate]);
+
+  const [stripeEnabled, setStripeEnabled] = useState(false);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const res = await getPaymentConfig();
+        const enabled = res.data?.data?.stripeEnabled;
+        setStripeEnabled(enabled);
+        if (!enabled && paymentMethod === 'card') {
+          setPaymentMethod('online');
+        }
+      } catch (err) {
+        console.error("Failed to fetch payment config", err);
+        setPaymentMethod('online');
+      }
+    };
+    fetchConfig();
+  }, []);
 
   useEffect(() => {
     if (checkIn && checkOut) {
@@ -120,14 +139,16 @@ const Booking = () => {
 
                 <h4 className="font-serif fw-bold text-primary mb-3 mt-5">Demo Payment Method</h4>
                 <div className="row g-3 mb-5">
-                  {['card', 'online', 'cash'].map((method) => (
+                  {['card', 'online', 'cash'].map((method) => {
+                    if (method === 'card' && !stripeEnabled) return null;
+                    return (
                     <div className="col-md-4" key={method}>
                       <div className={`payment-option ${paymentMethod === method ? 'selected' : ''}`} onClick={() => setPaymentMethod(method)}>
                         <i className={`bi fs-3 mb-2 d-block ${method === 'card' ? 'bi-credit-card' : method === 'online' ? 'bi-globe2' : 'bi-cash-stack'} ${paymentMethod === method ? 'text-accent' : 'text-muted'}`}></i>
                         <span className="fw-semibold text-capitalize">{method}</span>
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
 
                 <div className="alert alert-info bg-light border-0 mb-5 rounded" style={{ padding: '1.5rem' }}>

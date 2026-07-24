@@ -2,12 +2,13 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import Booking from './Booking';
-import { createCheckoutSession } from '../services/paymentService';
+import { createCheckoutSession, getPaymentConfig } from '../services/paymentService';
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
 vi.mock('../services/paymentService', () => ({
   createCheckoutSession: vi.fn(),
+  getPaymentConfig: vi.fn(),
 }));
 
 vi.mock('../services/bookingService', () => ({
@@ -32,6 +33,7 @@ describe('Booking Component Tests', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    getPaymentConfig.mockResolvedValue({ data: { data: { stripeEnabled: true } } });
   });
 
   afterAll(() => {
@@ -91,6 +93,23 @@ describe('Booking Component Tests', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Failed to initiate secure checkout/i)).toBeInTheDocument();
+    });
+  });
+
+  it('hides card payment option when Stripe is disabled', async () => {
+    getPaymentConfig.mockResolvedValueOnce({ data: { data: { stripeEnabled: false } } });
+
+    render(
+      <MemoryRouter>
+        <Booking />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText('card')).not.toBeInTheDocument();
+      expect(screen.getByText('cash')).toBeInTheDocument();
+      expect(screen.getByText('online')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Pay with Card/i })).not.toBeInTheDocument();
     });
   });
 });

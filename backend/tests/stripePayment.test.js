@@ -46,6 +46,8 @@ const mockUser = {
   }
 };
 
+process.env.STRIPE_PAYMENTS_ENABLED = "true";
+
 let emailCalledCount = 0;
 let emailShouldFail = false;
 const mockEmailService = {
@@ -265,5 +267,16 @@ test("Stripe Payment Controller Isolated Tests", async (t) => {
     // Must NOT throw error if email fails, because the payment was already finalized atomically.
     await paymentController.confirmStripePayment(request, response, next);
     assert.equal(response.statusCode, 200);
+  });
+
+  await t.test("Feature Switch - Disabled creates 503", async () => {
+    const originalEnv = process.env.STRIPE_PAYMENTS_ENABLED;
+    process.env.STRIPE_PAYMENTS_ENABLED = "false";
+    const request = req({ body: { booking_id: 1 } });
+    const response = res();
+    await paymentController.createStripeSession(request, response, next);
+    assert.equal(response.statusCode, 503);
+    assert.equal(response.data.message, "Stripe payments are currently disabled.");
+    process.env.STRIPE_PAYMENTS_ENABLED = originalEnv;
   });
 });

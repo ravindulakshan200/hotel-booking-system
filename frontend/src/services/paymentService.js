@@ -20,6 +20,11 @@ export const refundPayment = async (id) => {
   return response;
 };
 
+export const getPaymentConfig = async () => {
+  const response = await api.get('/payments/config');
+  return response;
+};
+
 export const createCheckoutSession = async (bookingId) => {
   const response = await api.post('/payments/create-checkout-session', { booking_id: bookingId });
   return response;

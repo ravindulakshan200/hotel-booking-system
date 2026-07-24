@@ -13,6 +13,7 @@ const {
   refundPayment,
   createStripeSession,
   confirmStripePayment,
+  getConfig,
 } = require("../controllers/paymentController");
 const { protect } = require("../middleware/authMiddleware");
 const { adminOnly } = require("../middleware/adminMiddleware");
@@ -20,6 +21,7 @@ const { adminOnly } = require("../middleware/adminMiddleware");
 router.use(protect);
 
 router.get("/my", getMyPayments);
+router.get("/config", getConfig);
 router.get("/", adminOnly, getAllPayments);
 router.get("/:id", getPaymentById);
 router.post("/", processPayment);

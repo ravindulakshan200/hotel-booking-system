@@ -11,6 +11,18 @@ const { sendBookingConfirmation } = require("../services/emailService");
 const VALID_METHODS = ["card", "cash", "online"];
 const VALID_STATUSES = ["pending", "completed", "refunded", "failed"];
 
+const getConfig = (req, res, next) => {
+  try {
+    const stripeEnabled = process.env.STRIPE_PAYMENTS_ENABLED === "true";
+    res.status(200).json({
+      success: true,
+      data: { stripeEnabled },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const processPayment = async (req, res, next) => {
   try {
     const { booking_id, payment_method } = req.body;
@@ -140,6 +152,9 @@ const refundPayment = async (req, res, next) => {
 
 const createStripeSession = async (req, res, next) => {
   try {
+    if (process.env.STRIPE_PAYMENTS_ENABLED !== "true") {
+      return res.status(503).json({ success: false, message: "Stripe payments are currently disabled." });
+    }
     const { booking_id } = req.body;
     if (!booking_id) {
       return res.status(400).json({ success: false, message: "booking_id is required." });
@@ -198,6 +213,9 @@ const createStripeSession = async (req, res, next) => {
 
 const confirmStripePayment = async (req, res, next) => {
   try {
+    if (process.env.STRIPE_PAYMENTS_ENABLED !== "true") {
+      return res.status(503).json({ success: false, message: "Stripe payments are currently disabled." });
+    }
     const { session_id } = req.body;
     if (!session_id) {
       return res.status(400).json({ success: false, message: "session_id is required." });
@@ -278,6 +296,9 @@ const finalizeStripePayment = async (session) => {
 };
 
 const handleStripeWebhook = async (req, res, next) => {
+  if (process.env.STRIPE_PAYMENTS_ENABLED !== "true") {
+    return res.status(503).send("Stripe payments are currently disabled.");
+  }
   const sig = req.headers["stripe-signature"];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
   let event;
@@ -312,4 +333,5 @@ module.exports = {
   createStripeSession,
   confirmStripePayment,
   handleStripeWebhook,
+  getConfig,
 };
