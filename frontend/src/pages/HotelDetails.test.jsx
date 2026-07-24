@@ -74,4 +74,65 @@ describe('HotelDetails Component', () => {
     expect(mapLink).toHaveAttribute('target', '_blank');
     expect(mapLink).toHaveAttribute('rel', 'noopener noreferrer');
   });
+
+  test('An empty rooms response still renders the hotel', async () => {
+    hotelService.getHotelById.mockResolvedValue({
+      data: { success: true, data: { hotel: { id: 1, name: 'Empty Rooms Hotel', amenities: [] } } }
+    });
+    roomService.getRoomsByHotel.mockResolvedValue({ data: { data: { rooms: [] } } });
+    reviewService.getHotelReviews.mockResolvedValue({ data: { data: { reviews: [] } } });
+    favoriteService.getMyFavorites.mockResolvedValue({ data: { data: { favorites: [] } } });
+
+    render(
+      <MemoryRouter initialEntries={['/hotel/1']}>
+        <Routes>
+          <Route path="/hotel/:id" element={<HotelDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Empty Rooms Hotel')).toBeInTheDocument();
+    });
+  });
+
+  test('A failed rooms request still renders hotel information with a safe no-rooms state', async () => {
+    hotelService.getHotelById.mockResolvedValue({
+      data: { success: true, data: { hotel: { id: 1, name: 'Failed Rooms Hotel', amenities: [] } } }
+    });
+    roomService.getRoomsByHotel.mockRejectedValue(new Error('Rooms API failed'));
+    reviewService.getHotelReviews.mockResolvedValue({ data: { data: { reviews: [] } } });
+    favoriteService.getMyFavorites.mockResolvedValue({ data: { data: { favorites: [] } } });
+
+    render(
+      <MemoryRouter initialEntries={['/hotel/1']}>
+        <Routes>
+          <Route path="/hotel/:id" element={<HotelDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed Rooms Hotel')).toBeInTheDocument();
+    });
+  });
+
+  test('A failed main hotel request still shows the details error', async () => {
+    hotelService.getHotelById.mockRejectedValue(new Error('Hotel API failed'));
+    roomService.getRoomsByHotel.mockResolvedValue({ data: { data: { rooms: [] } } });
+    reviewService.getHotelReviews.mockResolvedValue({ data: { data: { reviews: [] } } });
+    favoriteService.getMyFavorites.mockResolvedValue({ data: { data: { favorites: [] } } });
+
+    render(
+      <MemoryRouter initialEntries={['/hotel/1']}>
+        <Routes>
+          <Route path="/hotel/:id" element={<HotelDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to fetch hotel details')).toBeInTheDocument();
+    });
+  });
 });

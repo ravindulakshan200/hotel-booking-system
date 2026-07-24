@@ -43,7 +43,7 @@ const HotelDetails = () => {
             check_in: checkInParam || undefined,
             check_out: checkOutParam || undefined,
             guests: guestsParam || undefined
-          }),
+          }).catch(() => ({ data: { data: { rooms: [] } } })),
           getHotelReviews(id).catch(() => ({ data: { reviews: [] } }))
         ];
 
