@@ -19,6 +19,7 @@ const AdminRooms = () => {
   const [editId, setEditId] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   const fetchData = async () => {
     try {
@@ -72,13 +73,18 @@ const AdminRooms = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this room?')) return;
+  const handleDeleteClick = (id) => {
+    setConfirmDeleteId(id);
+  };
+
+  const handleConfirmDelete = async (id) => {
     try {
       await deleteRoom(id);
       fetchData();
+      setConfirmDeleteId(null);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to delete room.');
+      setConfirmDeleteId(null);
     }
   };
 
@@ -107,7 +113,14 @@ const AdminRooms = () => {
                     <td><span className={`badge bg-${r.availability_status === 'available' ? 'success' : 'secondary'}`}>{r.availability_status}</span></td>
                     <td>
                       <button className="btn btn-sm btn-outline-primary me-2" onClick={() => openEdit(r)}>Edit</button>
-                      <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(r.id)}>Delete</button>
+                      {confirmDeleteId === r.id ? (
+                        <div className="btn-group">
+                          <button className="btn btn-sm btn-danger" onClick={() => handleConfirmDelete(r.id)}>Yes, Delete</button>
+                          <button className="btn btn-sm btn-secondary" onClick={() => setConfirmDeleteId(null)}>Cancel</button>
+                        </div>
+                      ) : (
+                        <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteClick(r.id)}>Delete</button>
+                      )}
                     </td>
                   </tr>
                 ))}

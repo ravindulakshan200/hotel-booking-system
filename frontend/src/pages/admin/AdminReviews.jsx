@@ -7,6 +7,7 @@ const AdminReviews = () => {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   const fetchReviews = async () => {
     try {
@@ -21,13 +22,18 @@ const AdminReviews = () => {
 
   useEffect(() => { fetchReviews(); }, []);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this review?')) return;
+  const handleDeleteClick = (id) => {
+    setConfirmDeleteId(id);
+  };
+
+  const handleConfirmDelete = async (id) => {
     try {
       await deleteReview(id);
       fetchReviews();
+      setConfirmDeleteId(null);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to delete review.');
+      setConfirmDeleteId(null);
     }
   };
 
@@ -53,7 +59,14 @@ const AdminReviews = () => {
                     <td>{r.comment || '—'}</td>
                     <td>{new Date(r.created_at).toLocaleDateString()}</td>
                     <td>
-                      <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(r.id)}>Delete</button>
+                      {confirmDeleteId === r.id ? (
+                        <div className="btn-group">
+                          <button className="btn btn-sm btn-danger" onClick={() => handleConfirmDelete(r.id)}>Yes</button>
+                          <button className="btn btn-sm btn-secondary" onClick={() => setConfirmDeleteId(null)}>No</button>
+                        </div>
+                      ) : (
+                        <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteClick(r.id)}>Delete</button>
+                      )}
                     </td>
                   </tr>
                 ))}
