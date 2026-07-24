@@ -19,3 +19,18 @@ export const refundPayment = async (id) => {
   const response = await api.post(`/payments/${id}/refund`);
   return response;
 };
+
+export const getPaymentConfig = async () => {
+  const response = await api.get('/payments/config');
+  return response;
+};
+
+export const createCheckoutSession = async (bookingId) => {
+  const response = await api.post('/payments/create-checkout-session', { booking_id: bookingId });
+  return response;
+};
+
+export const confirmSession = async (sessionId) => {
+  const response = await api.post('/payments/confirm-session', { session_id: sessionId });
+  return response;
+};

@@ -1,6 +1,7 @@
 const Booking = require("../models/Booking");
 const Payment = require("../models/Payment");
 const { validateBookingInput } = require("../utils/validators");
+const { sendBookingConfirmation } = require("../services/emailService");
 
 const VALID_PAYMENT_METHODS = ["card", "cash", "online"];
 const VALID_BOOKING_STATUSES = ["pending", "confirmed", "cancelled", "completed"];
@@ -61,6 +62,9 @@ const checkoutBooking = async (req, res, next) => {
       Booking.findById(result.bookingId),
       Payment.findById(result.paymentId),
     ]);
+
+    // Send confirmation email synchronously for safety in serverless
+    await sendBookingConfirmation(req.user.email, req.user.first_name, booking);
 
     return res.status(201).json({
       success: true,

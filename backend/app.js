@@ -42,6 +42,11 @@ const createApp = () => {
       allowedHeaders: ["Content-Type", "Authorization"],
     })
   );
+
+  // Stripe webhook must be parsed as raw body before express.json() intercepts it
+  const stripeWebhookRoutes = require("./routes/stripeWebhookRoutes");
+  app.use("/api/v1/payments/stripe/webhook", stripeWebhookRoutes);
+
   app.use(express.json({ limit: "100kb" }));
   app.use(express.urlencoded({ extended: false, limit: "100kb" }));
 
