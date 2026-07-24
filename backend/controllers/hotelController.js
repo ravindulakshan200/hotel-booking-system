@@ -26,7 +26,7 @@ const { validateAvailabilitySearch } = require("../utils/validators");
  * Validate hotel input fields.
  * Returns { valid: boolean, errors: string[] }
  */
-const validateHotelInput = ({ name, address, city }, requireAll = true) => {
+const validateHotelInput = ({ name, address, city, description, image_url, star_rating, amenities, contact_phone, contact_email, map_url, status }, requireAll = true) => {
   const errors = [];
 
   if (requireAll || name !== undefined) {
@@ -46,10 +46,67 @@ const validateHotelInput = ({ name, address, city }, requireAll = true) => {
   }
 
   if (requireAll || city !== undefined) {
-    if (!city || typeof city !== "string" || city.trim().length === 0) {
-      errors.push("city is required");
+    if (!city || typeof city !== "string" || city.trim() === "") {
+      errors.push("city is required and must be a string");
     } else if (city.trim().length > 100) {
       errors.push("city must not exceed 100 characters");
+    }
+  }
+
+  if (requireAll || description !== undefined) {
+    if (!description || typeof description !== "string" || description.trim() === "") {
+      errors.push("description is required and must be a string");
+    }
+  }
+
+  if (requireAll || image_url !== undefined) {
+    if (!image_url || typeof image_url !== "string" || !image_url.startsWith('https://')) {
+      errors.push("image_url is required and must be a valid HTTPS URL");
+    }
+  }
+
+  if (star_rating !== undefined && star_rating !== null && star_rating !== '') {
+    const sr = Number(star_rating);
+    if (!Number.isInteger(sr) || sr < 1 || sr > 5) {
+      errors.push("star_rating must be an integer between 1 and 5");
+    }
+  }
+
+  if (amenities !== undefined && amenities !== null) {
+    const ALLOWED_AMENITIES = [
+      'Free Wi-Fi', 'Swimming Pool', 'Parking', 'Restaurant',
+      'Air Conditioning', 'Airport Transfer', 'Spa', 'Gym'
+    ];
+    if (!Array.isArray(amenities) || !amenities.every(a => typeof a === 'string' && ALLOWED_AMENITIES.includes(a))) {
+      errors.push("amenities must be an array of valid strings");
+    }
+  }
+
+  if (contact_phone !== undefined && contact_phone !== null && contact_phone !== '') {
+    if (typeof contact_phone !== "string" || contact_phone.trim().length > 20) {
+      errors.push("contact_phone must not exceed 20 characters");
+    }
+  }
+
+  if (contact_email !== undefined && contact_email !== null && contact_email !== '') {
+    const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (typeof contact_email !== "string" || !EMAIL_REGEX.test(contact_email.trim())) {
+      errors.push("contact_email must be a valid email address");
+    }
+  }
+
+  if (map_url !== undefined && map_url !== null && map_url !== '') {
+    if (
+      typeof map_url !== "string" ||
+      (!map_url.startsWith('https://www.google.com/maps') && !map_url.startsWith('https://maps.app.goo.gl/'))
+    ) {
+      errors.push("map_url must be a valid HTTPS Google Maps URL");
+    }
+  }
+
+  if (status !== undefined && status !== null && status !== '') {
+    if (status !== 'active' && status !== 'inactive') {
+      errors.push("status must be active or inactive");
     }
   }
 
@@ -196,10 +253,30 @@ const getHotelById = async (req, res, next) => {
  */
 const createHotel = async (req, res, next) => {
   try {
-    const { name, address, city, description } = req.body;
+    const { name, address, city, description, image_url, star_rating, amenities, contact_phone, contact_email, map_url, status } = req.body;
+
+    // Normalize empty strings to null
+    const normalizedDescription = description === '' ? null : description;
+    const normalizedImage = image_url === '' ? null : image_url;
+    const normalizedStarRating = star_rating === '' ? null : star_rating;
+    const normalizedPhone = contact_phone === '' ? null : contact_phone;
+    const normalizedEmail = contact_email === '' ? null : contact_email;
+    const normalizedMap = map_url === '' ? null : map_url;
+
+    const hotelData = {
+      name, address, city,
+      description: normalizedDescription,
+      image_url: normalizedImage,
+      star_rating: normalizedStarRating,
+      amenities,
+      contact_phone: normalizedPhone,
+      contact_email: normalizedEmail,
+      map_url: normalizedMap,
+      status
+    };
 
     // Validate required fields
-    const { valid, errors } = validateHotelInput({ name, address, city }, true);
+    const { valid, errors } = validateHotelInput(hotelData, true);
     if (!valid) {
       return res.status(400).json({
         success: false,
@@ -209,7 +286,7 @@ const createHotel = async (req, res, next) => {
     }
 
     // Insert and retrieve the new record
-    const newHotelId = await Hotel.create({ name, address, city, description });
+    const newHotelId = await Hotel.create(hotelData);
     const newHotel   = await Hotel.findById(newHotelId);
 
     return res.status(201).json({
@@ -251,13 +328,37 @@ const updateHotel = async (req, res, next) => {
       });
     }
 
-    const { name, address, city, description } = req.body;
+    const { name, address, city, description, image_url, star_rating, amenities, contact_phone, contact_email, map_url, status } = req.body;
+
+    // Normalize empty strings to null for optional fields to keep database consistent
+    const normalizedDescription = description === '' ? null : description;
+    const normalizedImage = image_url === '' ? null : image_url;
+    const normalizedStarRating = star_rating === '' ? null : star_rating;
+    const normalizedPhone = contact_phone === '' ? null : contact_phone;
+    const normalizedEmail = contact_email === '' ? null : contact_email;
+    const normalizedMap = map_url === '' ? null : map_url;
 
     // At least one field must be provided
-    const providedFields = { name, address, city, description };
-    const hasAnyField = Object.values(providedFields).some(
-      (v) => v !== undefined && v !== null
-    );
+    const providedFields = {
+      name, address, city,
+      description: normalizedDescription,
+      image_url: normalizedImage,
+      star_rating: normalizedStarRating,
+      amenities,
+      contact_phone: normalizedPhone,
+      contact_email: normalizedEmail,
+      map_url: normalizedMap,
+      status
+    };
+
+    // Remove undefined keys (but keep nulls)
+    Object.keys(providedFields).forEach(key => {
+      if (providedFields[key] === undefined) {
+        delete providedFields[key];
+      }
+    });
+
+    const hasAnyField = Object.keys(providedFields).length > 0;
 
     if (!hasAnyField) {
       return res.status(400).json({
@@ -268,7 +369,7 @@ const updateHotel = async (req, res, next) => {
 
     // Validate only the fields that were provided (partial update)
     const { valid, errors } = validateHotelInput(
-      { name, address, city },
+      providedFields,
       false // requireAll = false → only validate fields present in body
     );
     if (!valid) {
@@ -279,7 +380,7 @@ const updateHotel = async (req, res, next) => {
       });
     }
 
-    await Hotel.update(id, { name, address, city, description });
+    await Hotel.update(id, providedFields);
 
     // Return the fully updated record
     const updatedHotel = await Hotel.findById(id);
@@ -353,4 +454,5 @@ module.exports = {
   createHotel,
   updateHotel,
   deleteHotel,
+  validateHotelInput, // exported for testing
 };

@@ -68,6 +68,13 @@ CREATE TABLE IF NOT EXISTS hotels (
   address      VARCHAR(255)   NOT NULL,
   city         VARCHAR(100)   NOT NULL,
   description  TEXT           DEFAULT NULL,
+  image_url    VARCHAR(500)   DEFAULT NULL,
+  star_rating  TINYINT        DEFAULT NULL,
+  amenities    JSON           DEFAULT NULL,
+  contact_phone VARCHAR(20)   DEFAULT NULL,
+  contact_email VARCHAR(150)  DEFAULT NULL,
+  map_url      VARCHAR(500)   DEFAULT NULL,
+  status       ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
   created_at   TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at   TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP
                                         ON UPDATE CURRENT_TIMESTAMP,
