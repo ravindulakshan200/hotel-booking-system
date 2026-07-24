@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
 import Home from './pages/Home';
@@ -12,11 +12,13 @@ vi.mock('./services/hotelService', () => ({
 
 describe('Search and Availability Flow', () => {
   it('Home page renders search panel with correct inputs', async () => {
-    render(
-      <MemoryRouter>
-        <Home />
-      </MemoryRouter>
-    );
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <Home />
+        </MemoryRouter>
+      );
+    });
     expect(screen.getByPlaceholderText(/Where to/i)).toBeInTheDocument();
     expect(screen.getByText(/Check-In/i)).toBeInTheDocument();
     expect(screen.getByText(/Check-Out/i)).toBeInTheDocument();
