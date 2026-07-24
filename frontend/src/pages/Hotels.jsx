@@ -244,7 +244,8 @@ const Hotels = () => {
                 <div className="d-flex flex-column gap-4">
                     {hotels.map((hotel, index) => (
                     <div key={hotel.id} className="modern-card hover-lift p-0 d-flex flex-column flex-md-row slide-up overflow-hidden" style={{ animationDelay: `${(index % 9) * 60}ms` }}>
-                        <div className="bg-light" style={{ width: '100%', minHeight: '250px', backgroundImage: `url(${HOTEL_IMAGES[index % HOTEL_IMAGES.length]})`, backgroundSize: 'cover', backgroundPosition: 'center', flexBasis: '35%' }}>
+                        <div className="bg-light position-relative" style={{ width: '100%', minHeight: '250px', backgroundImage: `url(${hotel.image_url || HOTEL_IMAGES[index % HOTEL_IMAGES.length]})`, backgroundSize: 'cover', backgroundPosition: 'center', flexBasis: '35%' }}>
+                            {hotel.star_rating && <span className="position-absolute top-0 end-0 m-3 badge bg-primary text-white" style={{ fontSize: '0.9rem', padding: '0.5rem 0.8rem' }}>★ {hotel.star_rating}.0</span>}
                         </div>
                         <div className="p-4 d-flex flex-column bg-white flex-grow-1" style={{ flexBasis: '65%' }}>
                             <div className="d-flex justify-content-between align-items-start mb-2">

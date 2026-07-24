@@ -6,6 +6,7 @@
 const pool = require("../config/db");
 const User = require("../models/User");
 const Booking = require("../models/Booking");
+const Hotel = require("../models/Hotel");
 
 // â”€â”€â”€ DASHBOARD STATS & ANALYTICS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -181,6 +182,30 @@ const getAllUsers = async (req, res, next) => {
   }
 };
 
+const getAllHotelsAdmin = async (req, res, next) => {
+  try {
+    const { city, search } = req.query;
+    if ((city && typeof city !== "string") || (search && typeof search !== "string")) {
+      return res.status(400).json({ success: false, message: "city and search filters must be text." });
+    }
+    if ((city && city.length > 100) || (search && search.length > 150)) {
+      return res.status(400).json({ success: false, message: "Search filter is too long." });
+    }
+    const hotels = await Hotel.findAll({ city, search, includeInactive: true });
+
+    return res.status(200).json({
+      success: true,
+      message: hotels.length > 0 ? "Hotels fetched successfully." : "No hotels found.",
+      data: {
+        count: hotels.length,
+        hotels,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const deleteUser = async (req, res, next) => {
   try {
     const id = parseInt(req.params.id, 10);
@@ -254,6 +279,7 @@ const updateBookingStatus = async (req, res, next) => {
 module.exports = {
   getDashboardStats,
   getAllUsers,
+  getAllHotelsAdmin,
   deleteUser,
   updateBookingStatus,
 };

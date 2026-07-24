@@ -9,6 +9,7 @@ const router   = express.Router();
 const {
   getDashboardStats,
   getAllUsers,
+  getAllHotelsAdmin,
   deleteUser,
   updateBookingStatus,
 } = require("../controllers/adminController");
@@ -28,6 +29,9 @@ router.get("/analytics", getDashboardStats);
 // User management
 router.get("/users",          getAllUsers);
 router.delete("/users/:id",   deleteUser);
+
+// Hotel management
+router.get("/hotels",         getAllHotelsAdmin);
 
 // Booking status management (admin override)
 router.patch("/bookings/:id/status", updateBookingStatus);

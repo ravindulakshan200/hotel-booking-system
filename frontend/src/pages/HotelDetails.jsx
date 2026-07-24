@@ -97,7 +97,7 @@ const HotelDetails = () => {
     setReviewLoading(true);
     setReviewMessage({ type: '', text: '' });
     try {
-      await submitReview({ hotelId: id, ...reviewData });
+      await submitReview({ hotel_id: id, ...reviewData });
       setReviewMessage({ type: 'success', text: 'Review submitted successfully!' });
       setReviewData({ rating: 5, comment: '' });
       // Refresh reviews
@@ -125,10 +125,14 @@ const HotelDetails = () => {
 
   return (
     <div className="page-wrapper fade-in" style={{ backgroundColor: 'var(--color-bg)' }}>
-      {/* Hotel Hero Section */}
-      <div className="hotel-details-hero" style={{ backgroundImage: `linear-gradient(rgba(11,34,57,0.7), rgba(11,34,57,0.8)), url(https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=2000&q=80)` }}>
+      <div className="hotel-details-hero" style={{ backgroundImage: `linear-gradient(rgba(11,34,57,0.7), rgba(11,34,57,0.8)), url(${hotel.image_url || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=2000&q=80'})` }}>
         <div className="container hotel-details-content slide-up">
           <div className="d-flex align-items-center mb-2 flex-wrap gap-2">
+            {hotel.star_rating && (
+              <span className="badge bg-warning text-dark px-3 py-2 shadow-sm me-2" style={{ fontSize: '1rem' }}>
+                {'★'.repeat(hotel.star_rating)}{'☆'.repeat(5 - hotel.star_rating)}
+              </span>
+            )}
             <span className="badge bg-accent text-white px-3 py-2 shadow-sm" style={{ fontSize: '1rem' }}>
               <i className="bi bi-star-fill me-1"></i> {avgRating} Rating
             </span>
@@ -161,24 +165,37 @@ const HotelDetails = () => {
               <p className="lead text-muted" style={{ lineHeight: '1.8' }}>{hotel.description}</p>
 
               <div className="row mt-5 g-4">
-                <div className="col-sm-4">
-                  <div className="d-flex align-items-center text-primary bg-light p-3 rounded">
-                    <i className="bi bi-wifi fs-2 me-3 text-accent"></i>
-                    <span className="fw-bold fs-5">Free WiFi</span>
-                  </div>
-                </div>
-                <div className="col-sm-4">
-                  <div className="d-flex align-items-center text-primary bg-light p-3 rounded">
-                    <i className="bi bi-cup-hot-fill fs-2 me-3 text-accent"></i>
-                    <span className="fw-bold fs-5">Breakfast</span>
-                  </div>
-                </div>
-                <div className="col-sm-4">
-                  <div className="d-flex align-items-center text-primary bg-light p-3 rounded">
-                    <i className="bi bi-water fs-2 me-3 text-accent"></i>
-                    <span className="fw-bold fs-5">Pool</span>
-                  </div>
-                </div>
+                {hotel.amenities && hotel.amenities.length > 0 ? (
+                  hotel.amenities.map(amenity => (
+                    <div className="col-sm-4" key={amenity}>
+                      <div className="d-flex align-items-center text-primary bg-light p-3 rounded">
+                        <i className="bi bi-check-circle-fill fs-2 me-3 text-accent"></i>
+                        <span className="fw-bold fs-5">{amenity}</span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <>
+                    <div className="col-sm-4">
+                      <div className="d-flex align-items-center text-primary bg-light p-3 rounded">
+                        <i className="bi bi-wifi fs-2 me-3 text-accent"></i>
+                        <span className="fw-bold fs-5">Free WiFi</span>
+                      </div>
+                    </div>
+                    <div className="col-sm-4">
+                      <div className="d-flex align-items-center text-primary bg-light p-3 rounded">
+                        <i className="bi bi-cup-hot-fill fs-2 me-3 text-accent"></i>
+                        <span className="fw-bold fs-5">Breakfast</span>
+                      </div>
+                    </div>
+                    <div className="col-sm-4">
+                      <div className="d-flex align-items-center text-primary bg-light p-3 rounded">
+                        <i className="bi bi-water fs-2 me-3 text-accent"></i>
+                        <span className="fw-bold fs-5">Pool</span>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -301,21 +318,35 @@ const HotelDetails = () => {
           <div className="col-lg-4">
             <div className="modern-card p-4 bg-primary text-white sticky-top shadow-lg" style={{ top: '100px' }}>
               <h4 className="font-serif fw-bold mb-4 text-accent">Location & Contact</h4>
-              <div className="rounded bg-white mb-4 overflow-hidden" style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundImage: 'url(https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=400&q=80)', backgroundSize: 'cover' }}>
-              </div>
+
+              {hotel.map_url ? (
+                <div className="rounded bg-white mb-4 overflow-hidden d-flex align-items-center justify-content-center" style={{ height: '200px' }}>
+                  <a href={hotel.map_url} target="_blank" rel="noopener noreferrer" className="btn btn-outline-primary fw-bold">
+                    <i className="bi bi-geo-alt-fill me-2"></i>View on Google Maps
+                  </a>
+                </div>
+              ) : (
+                <div className="rounded bg-white mb-4 overflow-hidden" style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundImage: 'url(https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=400&q=80)', backgroundSize: 'cover' }}>
+                </div>
+              )}
+
               <ul className="list-unstyled mb-0">
                 <li className="mb-3 d-flex align-items-start">
                   <i className="bi bi-geo-alt-fill me-3 text-accent fs-5 mt-1"></i>
                   <span className="opacity-90">{hotel.address}, {hotel.city}, Sri Lanka</span>
                 </li>
-                <li className="mb-3 d-flex align-items-center">
-                  <i className="bi bi-telephone-fill me-3 text-accent fs-5"></i>
-                  <span className="opacity-90">+94 77 123 4567</span>
-                </li>
-                <li className="mb-0 d-flex align-items-center">
-                  <i className="bi bi-envelope-fill me-3 text-accent fs-5"></i>
-                  <span className="opacity-90">reservations@ceylonstays.lk</span>
-                </li>
+                {hotel.contact_phone && (
+                  <li className="mb-3 d-flex align-items-center">
+                    <i className="bi bi-telephone-fill me-3 text-accent fs-5"></i>
+                    <span className="opacity-90">{hotel.contact_phone}</span>
+                  </li>
+                )}
+                {hotel.contact_email && (
+                  <li className="mb-0 d-flex align-items-center">
+                    <i className="bi bi-envelope-fill me-3 text-accent fs-5"></i>
+                    <span className="opacity-90">{hotel.contact_email}</span>
+                  </li>
+                )}
               </ul>
             </div>
           </div>

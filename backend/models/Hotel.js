@@ -36,6 +36,10 @@ const Hotel = {
 
     const conditions = [];
 
+    if (!filters.includeInactive) {
+      conditions.push("status = 'active'");
+    }
+
     if (filters.city) {
       conditions.push("LOWER(city) = LOWER(?)");
       params.push(filters.city.trim());
@@ -56,7 +60,12 @@ const Hotel = {
     sql += " ORDER BY created_at DESC";
 
     const [rows] = await pool.query(sql, params);
-    return rows;
+    return rows.map(row => {
+      if (typeof row.amenities === 'string') {
+        try { row.amenities = JSON.parse(row.amenities); } catch(e) { row.amenities = []; }
+      }
+      return row;
+    });
   },
 
   /**
@@ -71,6 +80,9 @@ const Hotel = {
       "SELECT * FROM hotels WHERE id = ? LIMIT 1",
       [id]
     );
+    if (rows[0] && typeof rows[0].amenities === 'string') {
+      try { rows[0].amenities = JSON.parse(rows[0].amenities); } catch(e) { rows[0].amenities = []; }
+    }
     return rows[0] || null;
   },
 
@@ -85,15 +97,23 @@ const Hotel = {
    * @param {string} [hotelData.description]
    * @returns {Promise<number>} — insertId of the new row
    */
-  create: async ({ name, address, city, description }) => {
+  create: async ({ name, address, city, description, image_url, star_rating, amenities, contact_phone, contact_email, map_url, status }) => {
+    const amStr = amenities ? JSON.stringify(amenities) : null;
     const [result] = await pool.query(
-      `INSERT INTO hotels (name, address, city, description)
-       VALUES (?, ?, ?, ?)`,
+      `INSERT INTO hotels (name, address, city, description, image_url, star_rating, amenities, contact_phone, contact_email, map_url, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, 'active'))`,
       [
         name.trim(),
         address.trim(),
         city.trim(),
         description ? description.trim() : null,
+        image_url ? image_url.trim() : null,
+        star_rating !== undefined ? star_rating : null,
+        amStr,
+        contact_phone ? contact_phone.trim() : null,
+        contact_email ? contact_email.trim() : null,
+        map_url ? map_url.trim() : null,
+        status ? status.trim() : 'active'
       ]
     );
     return result.insertId;
@@ -110,18 +130,22 @@ const Hotel = {
    */
   update: async (id, updates) => {
     // Build SET clause dynamically from provided fields
-    const allowedFields = ["name", "address", "city", "description"];
+    const allowedFields = ["name", "address", "city", "description", "image_url", "star_rating", "amenities", "contact_phone", "contact_email", "map_url", "status"];
     const setClauses = [];
     const params     = [];
 
     for (const field of allowedFields) {
       if (updates[field] !== undefined) {
         setClauses.push(`${field} = ?`);
-        params.push(
-          typeof updates[field] === "string"
-            ? updates[field].trim()
-            : updates[field]
-        );
+        if (field === 'amenities') {
+          params.push(updates[field] ? JSON.stringify(updates[field]) : null);
+        } else {
+          params.push(
+            typeof updates[field] === "string"
+              ? updates[field].trim()
+              : updates[field]
+          );
+        }
       }
     }
 
@@ -162,12 +186,12 @@ const Hotel = {
   findAvailable: async (filters = {}) => {
     let sql = `
       SELECT
-        h.id, h.name, h.address, h.city, h.description, h.created_at, h.updated_at,
+        h.id, h.name, h.address, h.city, h.description, h.image_url, h.star_rating, h.amenities, h.contact_phone, h.contact_email, h.map_url, h.status, h.created_at, h.updated_at,
         COUNT(r.id) AS available_rooms,
         MIN(r.price_per_night) AS starting_price
       FROM hotels h
       JOIN rooms r ON h.id = r.hotel_id
-      WHERE r.availability_status = 'available'
+      WHERE r.availability_status = 'available' AND h.status = 'active'
     `;
     const params = [];
 
@@ -213,7 +237,12 @@ const Hotel = {
     }
 
     const [rows] = await pool.query(sql, params);
-    return rows;
+    return rows.map(row => {
+      if (typeof row.amenities === 'string') {
+        try { row.amenities = JSON.parse(row.amenities); } catch(e) { row.amenities = []; }
+      }
+      return row;
+    });
   },
 };
 

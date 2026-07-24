@@ -177,8 +177,8 @@ const Home = () => {
               {featuredHotels.map((hotel, index) => (
                 <div key={hotel.id} className="col-md-6 col-lg-4 slide-up" style={{ animationDelay: `${index * 80}ms` }}>
                   <div className="modern-card hover-lift h-100 d-flex flex-column">
-                    <div className="image-card-header" style={{ backgroundImage: `url(https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80)` }}>
-                      <span className="image-card-badge">★ 4.8</span>
+                    <div className="image-card-header" style={{ backgroundImage: `url(${hotel.image_url || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80'})` }}>
+                      {hotel.star_rating && <span className="image-card-badge">★ {hotel.star_rating}.0</span>}
                     </div>
                     <div className="card-body d-flex flex-column p-4">
                       <h5 className="card-title fw-bold mb-1 font-serif text-primary">{hotel.name}</h5>

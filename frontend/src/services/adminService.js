@@ -11,6 +11,11 @@ export const getAllUsers = async (role = '') => {
   return response;
 };
 
+export const getAllHotelsAdmin = async (params = '') => {
+  const response = await api.get(`/admin/hotels${params ? `?${params}` : ''}`);
+  return response;
+};
+
 export const createHotel = async (data) => {
   const response = await api.post('/hotels', data);
   return response;
