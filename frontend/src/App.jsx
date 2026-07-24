@@ -16,6 +16,7 @@ import Profile from './pages/Profile';
 import Favorites from './pages/Favorites';
 import MyPayments from './pages/MyPayments';
 import NotFound from './pages/NotFound';
+import PaymentSuccess from './pages/PaymentSuccess';
 
 // Lazy loaded Admin routes (optimization)
 const AdminDashboard = React.lazy(() => import('./pages/admin/AdminDashboard'));
@@ -102,6 +103,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <MyPayments />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/payment-success"
+                element={
+                  <ProtectedRoute>
+                    <PaymentSuccess />
                   </ProtectedRoute>
                 }
               />

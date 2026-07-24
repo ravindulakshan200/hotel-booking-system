@@ -11,6 +11,8 @@ const {
   getPaymentById,
   processPayment,
   refundPayment,
+  createStripeSession,
+  confirmStripePayment,
 } = require("../controllers/paymentController");
 const { protect } = require("../middleware/authMiddleware");
 const { adminOnly } = require("../middleware/adminMiddleware");
@@ -22,5 +24,7 @@ router.get("/", adminOnly, getAllPayments);
 router.get("/:id", getPaymentById);
 router.post("/", processPayment);
 router.post("/:id/refund", adminOnly, refundPayment);
+router.post("/create-checkout-session", createStripeSession);
+router.post("/confirm-session", confirmStripePayment);
 
 module.exports = router;

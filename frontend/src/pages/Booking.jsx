@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { checkoutBooking } from '../services/bookingService';
+import { checkoutBooking, createBooking } from '../services/bookingService';
+import { createCheckoutSession } from '../services/paymentService';
 import { formatCurrency } from '../utils/formatters';
 import { getLocalDateInputValue } from '../utils/dates';
 
@@ -55,17 +56,35 @@ const Booking = () => {
 
     setLoading(true);
     try {
-      await checkoutBooking({
-        room_id: room.id,
-        check_in: checkIn,
-        check_out: checkOut,
-        payment_method: paymentMethod,
-      });
+      if (paymentMethod === 'card') {
+        // Create pending booking
+        const bookingRes = await createBooking({
+          room_id: room.id,
+          check_in: checkIn,
+          check_out: checkOut,
+        });
+        const bookingId = bookingRes.data.data.booking.id;
 
-      navigate('/my-bookings', {
-        state: { message: 'Demo booking confirmed successfully. No real payment was processed.' },
-      });
+        // Get Stripe session and redirect
+        const sessionRes = await createCheckoutSession(bookingId);
+        if (!sessionRes.data?.data?.url) {
+          throw new Error('Failed to initiate secure checkout. Please try again.');
+        }
+        window.location.href = sessionRes.data.data.url;
+        return; // Redirecting to Stripe, so stop execution
+      } else {
+        // Proceed with demo checkout for cash/online
+        await checkoutBooking({
+          room_id: room.id,
+          check_in: checkIn,
+          check_out: checkOut,
+          payment_method: paymentMethod,
+        });
 
+        navigate('/my-bookings', {
+          state: { message: 'Demo booking confirmed successfully. No real payment was processed.' },
+        });
+      }
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to process booking and payment.');
     } finally {
@@ -91,11 +110,11 @@ const Booking = () => {
                 <div className="row mb-4">
                   <div className="col-md-6">
                     <label className="form-label fw-semibold">Check-in Date</label>
-                    <input type="date" className="form-control form-control-lg bg-light" required value={checkIn} min={today} onChange={(e) => setCheckIn(e.target.value)} />
+                    <input type="date" className="form-control form-control-lg bg-light" required value={checkIn} min={today} onChange={(e) => setCheckIn(e.target.value)} disabled={loading} />
                   </div>
                   <div className="col-md-6 mt-3 mt-md-0">
                     <label className="form-label fw-semibold">Check-out Date</label>
-                    <input type="date" className="form-control form-control-lg bg-light" required value={checkOut} min={checkIn || today} onChange={(e) => setCheckOut(e.target.value)} />
+                    <input type="date" className="form-control form-control-lg bg-light" required value={checkOut} min={checkIn || today} onChange={(e) => setCheckOut(e.target.value)} disabled={loading} />
                   </div>
                 </div>
 
@@ -112,9 +131,11 @@ const Booking = () => {
                 </div>
 
                 <div className="alert alert-info bg-light border-0 mb-5 rounded" style={{ padding: '1.5rem' }}>
-                  <h5 className="fw-bold mb-2 text-primary"><i className="bi bi-info-circle me-2"></i> Portfolio Demo Checkout</h5>
+                  <h5 className="fw-bold mb-2 text-primary"><i className="bi bi-info-circle me-2"></i> {paymentMethod === 'card' ? 'Secure Payment with Stripe' : 'Demo Checkout'}</h5>
                   <p className="mb-0 text-muted" style={{ fontSize: '0.9rem' }}>
-                    This project does not collect card details or process real money. The selected method is stored only as demo booking data.
+                    {paymentMethod === 'card'
+                      ? 'You will be redirected to Stripe to complete your secure payment. (Use Stripe test cards for demo).'
+                      : 'This project does not collect actual payment details for cash/online. The selected method is stored only as demo booking data.'}
                   </p>
                 </div>
 
@@ -124,7 +145,7 @@ const Booking = () => {
                   </Link>
                   <button type="submit" className="btn btn-primary btn-lg px-5 rounded-pill shadow-sm" disabled={loading || totalNights === 0}>
                     {loading ? <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> : null}
-                    {loading ? 'Confirming...' : 'Confirm Demo Booking'}
+                    {loading ? 'Processing...' : paymentMethod === 'card' ? 'Pay with Card' : 'Confirm Demo Booking'}
                   </button>
                 </div>
               </form>

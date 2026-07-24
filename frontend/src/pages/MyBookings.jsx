@@ -105,6 +105,10 @@ const MyBookings = () => {
                           <button className="btn btn-sm btn-outline-danger px-3 rounded-pill" onClick={() => handleCancel(booking.id)}>
                             Cancel
                           </button>
+                        ) : booking.booking_status === 'completed' ? (
+                          <Link to={`/hotels/${booking.hotel_id}`} className="btn btn-sm btn-outline-primary px-3 rounded-pill">
+                            Leave Review
+                          </Link>
                         ) : (
                           <span className="text-muted" style={{ fontSize: '0.85rem' }}>N/A</span>
                         )}

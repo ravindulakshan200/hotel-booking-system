@@ -77,7 +77,7 @@ const Payment = {
     return rows[0] || null;
   },
 
-  processAtomic: async ({ bookingId, paymentMethod, actorUserId, isAdmin = false }) => {
+  processAtomic: async ({ bookingId, paymentMethod, actorUserId, isAdmin = false, transactionReference }) => {
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
@@ -109,12 +109,12 @@ const Payment = {
         throw new HttpError(409, "This booking has already been paid.");
       }
 
-      const transactionReference = `DEMO-${Date.now()}-${bookingId}`;
+      const txRef = transactionReference || `DEMO-${Date.now()}-${bookingId}`;
       const [result] = await connection.query(
         `INSERT INTO payments
            (booking_id, payment_method, amount, payment_status, transaction_reference)
          VALUES (?, ?, ?, 'completed', ?)`,
-        [bookingId, paymentMethod, booking.total_price, transactionReference]
+        [bookingId, paymentMethod, booking.total_price, txRef]
       );
       await connection.query(
         "UPDATE bookings SET booking_status = 'confirmed' WHERE id = ?",
