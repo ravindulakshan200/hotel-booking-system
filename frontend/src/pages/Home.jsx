@@ -3,12 +3,12 @@ import { Link, useNavigate } from 'react-router';
 import { getHotels } from '../services/hotelService';
 
 const SL_DESTINATIONS = [
-  { city: 'Colombo', label: 'Colombo', img: 'https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&w=600&q=80', desc: 'The vibrant capital' },
-  { city: 'Kandy', label: 'Kandy', img: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?auto=format&fit=crop&w=600&q=80', desc: 'Temple of the Sacred Tooth' },
-  { city: 'Galle', label: 'Galle', img: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?auto=format&fit=crop&w=600&q=80', desc: 'Colonial fort & beaches' },
-  { city: 'Ella', label: 'Ella', img: 'https://images.unsplash.com/photo-1518495973542-4542c06a5843?auto=format&fit=crop&w=600&q=80', desc: 'Misty mountains & tea' },
-  { city: 'Sigiriya', label: 'Sigiriya', img: 'https://images.unsplash.com/photo-1608198093002-ad4e005484ec?auto=format&fit=crop&w=600&q=80', desc: 'Ancient rock fortress' },
-  { city: 'Bentota', label: 'Bentota', img: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80', desc: 'Tropical beach paradise' },
+  { city: 'Colombo', label: 'Colombo', img: '/images/default-hotel.svg', desc: 'The vibrant capital' },
+  { city: 'Kandy', label: 'Kandy', img: '/images/default-hotel.svg', desc: 'Temple of the Sacred Tooth' },
+  { city: 'Galle', label: 'Galle', img: '/images/default-hotel.svg', desc: 'Colonial fort & beaches' },
+  { city: 'Ella', label: 'Ella', img: '/images/default-hotel.svg', desc: 'Misty mountains & tea' },
+  { city: 'Sigiriya', label: 'Sigiriya', img: '/images/default-hotel.svg', desc: 'Ancient rock fortress' },
+  { city: 'Bentota', label: 'Bentota', img: '/images/default-hotel.svg', desc: 'Tropical beach paradise' },
 ];
 
 const Home = () => {
@@ -177,7 +177,7 @@ const Home = () => {
               {featuredHotels.map((hotel, index) => (
                 <div key={hotel.id} className="col-md-6 col-lg-4 slide-up" style={{ animationDelay: `${index * 80}ms` }}>
                   <div className="modern-card hover-lift h-100 d-flex flex-column">
-                    <div className="image-card-header" style={{ backgroundImage: `url(${hotel.image_url || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80'})` }}>
+                    <div className="image-card-header" style={{ backgroundImage: `url(${hotel.image_url || '/images/default-hotel.svg'})` }}>
                       {hotel.star_rating && <span className="image-card-badge">★ {hotel.star_rating}.0</span>}
                     </div>
                     <div className="card-body d-flex flex-column p-4">

@@ -97,7 +97,7 @@ describe('Booking Component Tests', () => {
   });
 
   it('hides card payment option when Stripe is disabled', async () => {
-    getPaymentConfig.mockResolvedValueOnce({ data: { data: { stripeEnabled: false } } });
+    getPaymentConfig.mockResolvedValueOnce({ data: { data: { stripeEnabled: false, demoPaymentsEnabled: true } } });
 
     render(
       <MemoryRouter>

@@ -127,7 +127,7 @@ const HotelDetails = () => {
 
   return (
     <div className="page-wrapper fade-in" style={{ backgroundColor: 'var(--color-bg)' }}>
-      <div className="hotel-details-hero" style={{ backgroundImage: `linear-gradient(rgba(11,34,57,0.7), rgba(11,34,57,0.8)), url(${hotel.image_url || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=2000&q=80'})` }}>
+      <div className="hotel-details-hero" style={{ backgroundImage: `linear-gradient(rgba(11,34,57,0.7), rgba(11,34,57,0.8)), url(${hotel.image_url || '/images/default-hotel.svg'})` }}>
         <div className="container hotel-details-content slide-up">
           <div className="d-flex align-items-center mb-2 flex-wrap gap-2">
             {hotel.star_rating && (
@@ -215,7 +215,7 @@ const HotelDetails = () => {
               <div className="d-flex flex-column gap-4 mb-5">
                 {rooms.map((room, index) => (
                   <div key={room.id} className="modern-card hover-lift p-0 d-flex flex-column flex-md-row slide-up shadow-sm border" style={{ animationDelay: `${index * 50}ms` }}>
-                    <div className="bg-light" style={{ width: '100%', minHeight: '220px', backgroundImage: 'url(https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=600&q=80)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
+                    <div className="bg-light" style={{ width: '100%', minHeight: '220px', backgroundImage: 'url(/images/default-hotel.svg)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
                       {/* Optional: Add Room Image placeholder */}
                     </div>
                     <div className="p-4 d-flex flex-column w-100 bg-white">
@@ -330,7 +330,7 @@ const HotelDetails = () => {
                   </a>
                 </div>
               ) : (
-                <div className="rounded bg-white mb-4 overflow-hidden" style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundImage: 'url(https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=400&q=80)', backgroundSize: 'cover' }}>
+                <div className="rounded bg-white mb-4 overflow-hidden" style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundImage: 'url(/images/default-hotel.svg)', backgroundSize: 'cover' }}>
                 </div>
               )}
 

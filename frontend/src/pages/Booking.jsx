@@ -27,15 +27,22 @@ const Booking = () => {
   }, [room, navigate]);
 
   const [stripeEnabled, setStripeEnabled] = useState(false);
+  const [demoPaymentsEnabled, setDemoPaymentsEnabled] = useState(false);
 
   useEffect(() => {
     const fetchConfig = async () => {
       try {
         const res = await getPaymentConfig();
-        const enabled = res.data?.data?.stripeEnabled;
-        setStripeEnabled(enabled);
-        if (!enabled && paymentMethod === 'card') {
-          setPaymentMethod('online');
+        const configData = res.data?.data || {};
+        const sEnabled = configData.stripeEnabled;
+        const dEnabled = configData.demoPaymentsEnabled;
+        setStripeEnabled(sEnabled);
+        setDemoPaymentsEnabled(dEnabled);
+
+        if (!sEnabled && paymentMethod === 'card') {
+          setPaymentMethod(dEnabled ? 'online' : 'card');
+        } else if (!dEnabled && paymentMethod !== 'card') {
+          setPaymentMethod(sEnabled ? 'card' : 'online');
         }
       } catch (err) {
         console.error("Failed to fetch payment config", err);
@@ -137,10 +144,13 @@ const Booking = () => {
                   </div>
                 </div>
 
-                <h4 className="font-serif fw-bold text-primary mb-3 mt-5">Demo Payment Method</h4>
+                <h4 className="font-serif fw-bold text-primary mb-3 mt-5">
+                  {demoPaymentsEnabled ? 'Demo Payment Method' : 'Payment Method'}
+                </h4>
                 <div className="row g-3 mb-5">
                   {['card', 'online', 'cash'].map((method) => {
                     if (method === 'card' && !stripeEnabled) return null;
+                    if (method !== 'card' && !demoPaymentsEnabled) return null;
                     return (
                     <div className="col-md-4" key={method}>
                       <div className={`payment-option ${paymentMethod === method ? 'selected' : ''}`} onClick={() => setPaymentMethod(method)}>
@@ -151,22 +161,31 @@ const Booking = () => {
                   )})}
                 </div>
 
-                <div className="alert alert-info bg-light border-0 mb-5 rounded" style={{ padding: '1.5rem' }}>
-                  <h5 className="fw-bold mb-2 text-primary"><i className="bi bi-info-circle me-2"></i> {paymentMethod === 'card' ? 'Secure Payment with Stripe' : 'Demo Checkout'}</h5>
-                  <p className="mb-0 text-muted" style={{ fontSize: '0.9rem' }}>
-                    {paymentMethod === 'card'
-                      ? 'You will be redirected to Stripe to complete your secure payment. (Use Stripe test cards for demo).'
-                      : 'This project does not collect actual payment details for cash/online. The selected method is stored only as demo booking data.'}
-                  </p>
-                </div>
+                {(!stripeEnabled && !demoPaymentsEnabled) ? (
+                   <div className="alert alert-danger mb-5 rounded">
+                     No payment methods are currently available. Please try again later.
+                   </div>
+                ) : (
+                  <div className="alert alert-info bg-light border-0 mb-5 rounded" style={{ padding: '1.5rem' }}>
+                    <h5 className="fw-bold mb-2 text-primary">
+                      <i className="bi bi-info-circle me-2"></i>
+                      {paymentMethod === 'card' ? 'Secure Payment with Stripe' : (demoPaymentsEnabled ? 'Demo Checkout' : 'Checkout')}
+                    </h5>
+                    <p className="mb-0 text-muted" style={{ fontSize: '0.9rem' }}>
+                      {paymentMethod === 'card'
+                        ? 'You will be redirected to Stripe to complete your secure payment. (Use Stripe test cards for demo).'
+                        : 'This project does not collect actual payment details for cash/online. The selected method is stored only as demo booking data.'}
+                    </p>
+                  </div>
+                )}
 
                 <div className="d-flex justify-content-between align-items-center mt-5 pt-3 border-top">
                   <Link to={hotel ? `/hotels/${hotel.id}` : '/hotels'} className="btn btn-outline-primary px-4 rounded-pill">
                     <i className="bi bi-arrow-left me-2"></i>Go Back
                   </Link>
-                  <button type="submit" className="btn btn-primary btn-lg px-5 rounded-pill shadow-sm" disabled={loading || totalNights === 0}>
+                  <button type="submit" className="btn btn-primary btn-lg px-5 rounded-pill shadow-sm" disabled={loading || totalNights === 0 || (!stripeEnabled && !demoPaymentsEnabled)}>
                     {loading ? <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> : null}
-                    {loading ? 'Processing...' : paymentMethod === 'card' ? 'Pay with Card' : 'Confirm Demo Booking'}
+                    {loading ? 'Processing...' : paymentMethod === 'card' ? 'Pay with Card' : (demoPaymentsEnabled ? 'Confirm Demo Booking' : 'Confirm Booking')}
                   </button>
                 </div>
               </form>
