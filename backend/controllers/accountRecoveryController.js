@@ -1,6 +1,5 @@
 const crypto = require("crypto");
 const User = require("../models/User");
-const { sendEmailVerification, sendPasswordReset } = require("../services/emailService");
 const { validatePasswordChangeInput } = require("../utils/validators");
 
 const generateTokenAndHash = () => {
@@ -30,7 +29,21 @@ const resendVerification = async (req, res, next) => {
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
     await User.setVerificationToken(user.id, tokenHash, expiresAt);
-    await sendEmailVerification(user.email, user.first_name, rawToken);
+
+    try {
+      const EmailOutbox = require("../models/EmailOutbox");
+      await EmailOutbox.enqueueEmailEvent(null, {
+        eventKey: `email_verification_${user.id}_${Date.now()}`,
+        eventType: 'email_verification_requested',
+        recipientUserId: user.id,
+        payload: {
+          rawToken: rawToken
+        },
+        expiresAt
+      });
+    } catch (err) {
+      console.error("Failed to enqueue resend verification:", err.message);
+    }
 
     return res.status(200).json({
       success: true,
@@ -96,7 +109,21 @@ const forgotPassword = async (req, res, next) => {
     const expiresAt = new Date(Date.now() + 1 * 60 * 60 * 1000); // 1 hour
 
     await User.setResetToken(user.email, tokenHash, expiresAt);
-    await sendPasswordReset(user.email, rawToken);
+
+    try {
+      const EmailOutbox = require("../models/EmailOutbox");
+      await EmailOutbox.enqueueEmailEvent(null, {
+        eventKey: `password_reset_${user.id}_${Date.now()}`,
+        eventType: 'password_reset_requested',
+        recipientUserId: user.id,
+        payload: {
+          rawToken: rawToken
+        },
+        expiresAt
+      });
+    } catch (err) {
+      console.error("Failed to enqueue password reset:", err.message);
+    }
 
     return res.status(200).json({
       success: true,

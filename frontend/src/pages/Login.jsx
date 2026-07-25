@@ -37,7 +37,7 @@ const Login = () => {
     try {
       const { resendVerification } = await import('../services/authService');
       const response = await resendVerification(email);
-      setResendStatus(response.data?.message || 'Verification email sent.');
+      setResendStatus(response.data?.message || 'Check your email shortly for a verification link.');
     } catch (err) {
       setResendStatus(err.response?.data?.message || 'Failed to resend verification.');
     }

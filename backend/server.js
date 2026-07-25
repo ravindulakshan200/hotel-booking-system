@@ -27,12 +27,16 @@ const startServer = async () => {
     console.log(`Server running on http://localhost:${port}`);
   });
 
+  const emailWorker = require("./services/emailWorker");
+  emailWorker.start();
+
   let isShuttingDown = false;
 
   const shutdown = (signal) => {
     if (isShuttingDown) return;
     isShuttingDown = true;
     console.log(`${signal} received. Closing server...`);
+    emailWorker.stop();
     server.close(async () => {
       await pool.end();
     });

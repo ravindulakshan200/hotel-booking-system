@@ -14,7 +14,11 @@ const makeConnection = ({ overlap = false } = {}) => {
     commit: async () => calls.push("commit"),
     rollback: async () => calls.push("rollback"),
     release: () => calls.push("release"),
-    query: async (sql) => {
+    query: async (sql, params) => {
+      // Ignore strict checks for outbox enqueuing during atomic booking transitions
+      if (sql.includes("INSERT IGNORE INTO email_outbox")) {
+        return [{ insertId: 999 }];
+      }
       calls.push(sql.replace(/\s+/g, " ").trim());
       if (sql.includes("FROM rooms")) {
         return [[{ id: 1, price_per_night: "25000.00", availability_status: "available" }]];
@@ -94,7 +98,10 @@ test("admin status transition locks the booking and returns refundRequired for p
     commit: async () => calls.push("commit"),
     rollback: async () => calls.push("rollback"),
     release: () => calls.push("release"),
-    query: async (sql) => {
+    query: async (sql, params) => {
+      if (sql.includes("INSERT IGNORE INTO email_outbox")) {
+        return [{ insertId: 999 }];
+      }
       calls.push(sql.replace(/\s+/g, " ").trim());
       if (sql.includes("SELECT id, booking_status, refund_status")) {
         return [[{ id: 42, booking_status: "confirmed", refund_status: "not_required" }]];
@@ -123,7 +130,10 @@ test("cancellation of unpaid booking works and returns refundRequired: false", a
     commit: async () => calls.push("commit"),
     rollback: async () => calls.push("rollback"),
     release: () => calls.push("release"),
-    query: async (sql) => {
+    query: async (sql, params) => {
+      if (sql.includes("INSERT IGNORE INTO email_outbox")) {
+        return [{ insertId: 999 }];
+      }
       calls.push(sql.replace(/\s+/g, " ").trim());
       if (sql.includes("SELECT id, user_id, booking_status, refund_status")) {
         return [[{ id: 42, user_id: 1, booking_status: "pending", refund_status: "not_required" }]];
@@ -152,7 +162,10 @@ test("duplicate cancellation does not overwrite existing refund request", async 
     commit: async () => calls.push("commit"),
     rollback: async () => calls.push("rollback"),
     release: () => calls.push("release"),
-    query: async (sql) => {
+    query: async (sql, params) => {
+      if (sql.includes("INSERT IGNORE INTO email_outbox")) {
+        return [{ insertId: 999 }];
+      }
       calls.push(sql.replace(/\s+/g, " ").trim());
       // Admin update changes status but it's already a pending refund
       if (sql.includes("SELECT id, booking_status, refund_status")) {
@@ -172,4 +185,30 @@ test("duplicate cancellation does not overwrite existing refund request", async 
   // Should NOT include the refund_status update clause since it is already processing
   assert.ok(!connection.calls.some((call) => call.includes("refund_status = 'required'")));
   assert.ok(connection.calls.includes("commit"));
+});
+
+test("booking creation commits successfully even if outbox enqueue fails", async () => {
+  const connection = makeConnection();
+  // Override query to throw an error specifically for outbox insertion to simulate failure
+  const originalQuery = connection.query;
+  connection.query = async (sql, params) => {
+    if (sql.includes("INSERT IGNORE INTO email_outbox")) {
+      throw new Error("Simulated encryption or outbox failure");
+    }
+    return originalQuery(sql, params);
+  };
+  pool.getConnection = async () => connection;
+
+  const id = await Booking.createWithAvailability({
+    user_id: 2,
+    room_id: 1,
+    check_in: "2028-01-10",
+    check_out: "2028-01-12",
+  });
+
+  assert.equal(id, 42);
+  assert.ok(connection.calls.some((call) => call.includes("FOR UPDATE")));
+  // The transaction should still commit!
+  assert.ok(connection.calls.includes("commit"));
+  assert.ok(!connection.calls.includes("rollback"));
 });

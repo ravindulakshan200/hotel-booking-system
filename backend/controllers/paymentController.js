@@ -6,7 +6,6 @@
 const Payment = require("../models/Payment");
 const Booking = require("../models/Booking");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY || "sk_test_mock_key");
-const { sendBookingConfirmation } = require("../services/emailService");
 
 const VALID_METHODS = ["card", "cash", "online"];
 const VALID_STATUSES = ["pending", "completed", "refunded", "failed"];
@@ -268,20 +267,7 @@ const finalizeStripePayment = async (session) => {
       transactionReference: session.payment_intent,
     });
 
-    const [updatedBooking, User] = await Promise.all([
-      Booking.findById(bookingId),
-      require("../models/User")
-    ]);
-    const user = await User.findUserById(booking.user_id);
-
-    // Send confirmation email and wait for completion/failure safely
-    if (user) {
-      try {
-        await sendBookingConfirmation(user.email, user.first_name, updatedBooking);
-      } catch (emailErr) {
-        console.error("Email confirmation failed after successful payment:", emailErr);
-      }
-    }
+    // Send confirmation email via outbox (now handled by Payment.processAtomic)
   } catch (err) {
     if (err.code === "ER_DUP_ENTRY" || (err.statusCode === 409 && err.message.includes("already been paid"))) {
       const existingPayment = await Payment.findByBooking(bookingId);

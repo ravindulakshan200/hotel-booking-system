@@ -1,16 +1,27 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
+let createdPools = [];
+
 const loadPool = () => {
   delete require.cache[require.resolve("../config/db")];
   delete require.cache[require.resolve("../config/env")];
-  return require("../config/db");
+  const pool = require("../config/db");
+  createdPools.push(pool);
+  return pool;
 };
 
 const originalEnv = { ...process.env };
 
 test.afterEach(() => {
   process.env = { ...originalEnv };
+});
+
+test.after(async () => {
+  for (const pool of createdPools) {
+    await pool.end();
+  }
+  createdPools = [];
 });
 
 test("Local/default pool configuration contains no ssl property", () => {

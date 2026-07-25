@@ -153,6 +153,19 @@ const Booking = {
         status: "pending",
         expiresAt: new Date(Date.now() + 15 * 60000), // 15 mins
       });
+
+      try {
+        const EmailOutbox = require("./EmailOutbox");
+        await EmailOutbox.enqueueEmailEvent(connection, {
+          eventKey: `booking_created_${bookingId}`,
+          eventType: 'booking_created',
+          recipientUserId: user_id,
+          payload: { bookingId }
+        });
+      } catch (err) {
+        console.error("Failed to enqueue email event (booking_created):", err.message);
+      }
+
       await connection.commit();
       return bookingId;
     } catch (error) {
@@ -186,6 +199,18 @@ const Booking = {
          VALUES (?, ?, ?, 'completed', ?)`,
         [bookingId, payment_method, totalPrice, transactionReference]
       );
+
+      try {
+        const EmailOutbox = require("./EmailOutbox");
+        await EmailOutbox.enqueueEmailEvent(connection, {
+          eventKey: `booking_confirmed_${bookingId}`,
+          eventType: 'booking_confirmed',
+          recipientUserId: user_id,
+          payload: { bookingId }
+        });
+      } catch (err) {
+        console.error("Failed to enqueue email event (booking_confirmed):", err.message);
+      }
 
       await connection.commit();
       return { bookingId, paymentId: paymentResult.insertId };
@@ -240,6 +265,20 @@ const Booking = {
          WHERE id = ?`,
         [newStatus, actorUserId, isAdmin ? 'Cancelled by admin' : 'Cancelled by user', id]
       );
+
+      try {
+        const EmailOutbox = require("./EmailOutbox");
+        const eventType = refundRequired ? 'refund_required' : 'booking_cancelled';
+        await EmailOutbox.enqueueEmailEvent(connection, {
+          eventKey: `${eventType}_${id}`,
+          eventType: eventType,
+          recipientUserId: booking.user_id,
+          payload: { bookingId: id }
+        });
+      } catch (err) {
+        console.error(`Failed to enqueue email event for cancellation (refundRequired: ${refundRequired}):`, err.message);
+      }
+
       await connection.commit();
       return { refundRequired, newStatus };
     } catch (error) {
@@ -312,6 +351,29 @@ const Booking = {
       updateParams.push(id);
 
       await connection.query(updateQuery, updateParams);
+
+      try {
+        const EmailOutbox = require("./EmailOutbox");
+        if (status === "cancelled") {
+          const eventType = refundRequired ? 'refund_required' : 'booking_cancelled';
+          await EmailOutbox.enqueueEmailEvent(connection, {
+            eventKey: `${eventType}_${id}`,
+            eventType: eventType,
+            recipientUserId: booking.user_id,
+            payload: { bookingId: id }
+          });
+        } else if (status === "confirmed") {
+          await EmailOutbox.enqueueEmailEvent(connection, {
+            eventKey: `booking_confirmed_${id}`,
+            eventType: 'booking_confirmed',
+            recipientUserId: booking.user_id,
+            payload: { bookingId: id }
+          });
+        }
+      } catch (err) {
+        console.error(`Failed to enqueue email event for status transition to ${status}:`, err.message);
+      }
+
       await connection.commit();
       return { refundRequired, newStatus: status };
     } catch (error) {

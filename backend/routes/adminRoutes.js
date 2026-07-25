@@ -12,6 +12,8 @@ const {
   getAllHotelsAdmin,
   deleteUser,
   updateBookingStatus,
+  getEmailStats,
+  retryEmail
 } = require("../controllers/adminController");
 
 const { protect }    = require("../middleware/authMiddleware");
@@ -39,5 +41,9 @@ router.patch("/bookings/:id/status", updateBookingStatus);
 // Cleanup expired bookings manually (admin)
 const { cleanupExpiredBookings } = require("../controllers/bookingController");
 router.post("/bookings/cleanup-expired", cleanupExpiredBookings);
+
+// Email Outbox Management
+router.get("/email/stats", getEmailStats);
+router.post("/email/retry/:id", retryEmail);
 
 module.exports = router;

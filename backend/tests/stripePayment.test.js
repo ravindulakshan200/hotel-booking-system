@@ -24,6 +24,12 @@ const mockPayment = {
     if (transactionReference === "pi_fail_db") {
       throw new Error("DB Error");
     }
+    emailCalledCount++;
+    if (emailShouldFail) {
+      // Just simulate email enqueue success even if delivery fails later,
+      // since the worker handles delivery. For the controller's atomic test,
+      // the enqueueing succeeds and doesn't throw.
+    }
     return 99;
   },
   findByBooking: async (bookingId) => {

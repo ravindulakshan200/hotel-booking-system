@@ -13,6 +13,18 @@ const getJwtSecret = () => {
   return secret;
 };
 
+const getEncryptionKeyConfig = () => {
+  const keyHex = process.env.EMAIL_PAYLOAD_ENCRYPTION_KEY;
+  if (!keyHex) {
+    throw new Error("EMAIL_PAYLOAD_ENCRYPTION_KEY must be configured with a private value.");
+  }
+  const key = Buffer.from(keyHex, "hex");
+  if (key.length !== 32) {
+    throw new Error("EMAIL_PAYLOAD_ENCRYPTION_KEY must be exactly 32 bytes (64 hex characters).");
+  }
+  return key;
+};
+
 const getAllowedOrigins = () => {
   const configured = process.env.CLIENT_URLS || process.env.CLIENT_URL || "http://localhost:5173";
   return configured
@@ -75,6 +87,15 @@ const validateEnvironment = () => {
     errors.push(error.message);
   }
 
+  // Validate encryption key if worker is enabled in production
+  if (process.env.NODE_ENV === "production" && process.env.EMAIL_WORKER_ENABLED === "true") {
+    try {
+      getEncryptionKeyConfig();
+    } catch (error) {
+      errors.push(error.message);
+    }
+  }
+
   try {
     getTrustProxy();
   } catch (error) {
@@ -97,4 +118,4 @@ const validateEnvironment = () => {
   }
 };
 
-module.exports = { getJwtSecret, getAllowedOrigins, getTrustProxy, getDbSslConfig, validateEnvironment };
+module.exports = { getJwtSecret, getAllowedOrigins, getTrustProxy, getDbSslConfig, validateEnvironment, getEncryptionKeyConfig };

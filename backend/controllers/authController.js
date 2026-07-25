@@ -23,7 +23,6 @@ const {
   validatePasswordChangeInput,
 } = require("../utils/validators");
 const { generateTokenAndHash } = require("./accountRecoveryController");
-const { sendEmailVerification } = require("../services/emailService");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // REGISTER
@@ -70,7 +69,21 @@ const register = async (req, res, next) => {
     const { rawToken, tokenHash } = generateTokenAndHash();
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
     await User.setVerificationToken(newUserId, tokenHash, expiresAt);
-    await sendEmailVerification(email, first_name, rawToken);
+
+    try {
+      const EmailOutbox = require("../models/EmailOutbox");
+      await EmailOutbox.enqueueEmailEvent(null, {
+        eventKey: `email_verification_${newUserId}_${Date.now()}`,
+        eventType: 'email_verification_requested',
+        recipientUserId: newUserId,
+        payload: {
+          rawToken: rawToken
+        },
+        expiresAt
+      });
+    } catch (err) {
+      console.error("Failed to enqueue email_verification_requested:", err.message);
+    }
 
     // ── 5. Respond ───────────────────────────────────────────────────────────
     return res.status(201).json({

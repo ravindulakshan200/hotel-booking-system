@@ -120,6 +120,19 @@ const Payment = {
         "UPDATE bookings SET booking_status = 'confirmed' WHERE id = ?",
         [bookingId]
       );
+
+      try {
+        const EmailOutbox = require("./EmailOutbox");
+        await EmailOutbox.enqueueEmailEvent(connection, {
+          eventKey: `booking_confirmed_${bookingId}`,
+          eventType: 'booking_confirmed',
+          recipientUserId: booking.user_id,
+          payload: { bookingId }
+        });
+      } catch (err) {
+        console.error("Failed to enqueue email event (booking_confirmed) in payment:", err.message);
+      }
+
       await connection.commit();
       return result.insertId;
     } catch (error) {

@@ -7,6 +7,7 @@ const pool = require("../config/db");
 const User = require("../models/User");
 const Booking = require("../models/Booking");
 const Hotel = require("../models/Hotel");
+const EmailOutbox = require("../models/EmailOutbox");
 
 // â”€â”€â”€ DASHBOARD STATS & ANALYTICS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -285,10 +286,49 @@ const updateBookingStatus = async (req, res, next) => {
   }
 };
 
+// ─── EMAIL OUTBOX MANAGEMENT ───────────────────────────────────────────────────
+
+const getEmailStats = async (req, res, next) => {
+  try {
+    const stats = await EmailOutbox.getHealthStats();
+    return res.status(200).json({
+      success: true,
+      message: "Email outbox stats fetched successfully.",
+      data: { stats }
+    });
+  } catch (error) {
+    console.error(error); next(error);
+  }
+};
+
+const retryEmail = async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id) || id < 1) {
+      return res.status(400).json({ success: false, message: "Invalid email ID." });
+    }
+
+    const success = await EmailOutbox.retryDeadLetter(id);
+    if (!success) {
+      return res.status(404).json({ success: false, message: "Email not found or not a dead letter." });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Email queued for retry successfully.",
+      data: null
+    });
+  } catch (error) {
+    console.error(error); next(error);
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getAllUsers,
   getAllHotelsAdmin,
   deleteUser,
   updateBookingStatus,
+  getEmailStats,
+  retryEmail,
 };
