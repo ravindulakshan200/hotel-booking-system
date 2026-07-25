@@ -6,9 +6,9 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test": "node --test \"tests/unit/**/*.test.js\" && node --test \"tests/integration/**/*.test.js\"",
-    "test:unit": "node --test \"tests/unit/**/*.test.js\"",
-    "test:integration": "node --test \"tests/integration/**/*.test.js\""
+    "test": "node scripts/run-tests.js tests/unit tests/integration",
+    "test:unit": "node scripts/run-tests.js tests/unit",
+    "test:integration": "node scripts/run-tests.js tests/integration"
   },
   "keywords": [
     "hotel",
