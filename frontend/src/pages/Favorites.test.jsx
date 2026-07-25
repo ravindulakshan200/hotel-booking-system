@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import Favorites from './Favorites';
 import * as favoriteService from '../services/favoriteService';
 import { vi } from 'vitest';

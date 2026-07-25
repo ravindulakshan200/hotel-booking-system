@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { MemoryRouter, Routes, Route } from 'react-router';
 import { beforeEach, expect, test, vi } from 'vitest';
 
 import { AuthProvider } from './context/AuthContext';

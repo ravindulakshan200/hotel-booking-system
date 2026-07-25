@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import AdminPayments from './AdminPayments';
 import * as paymentService from '../../services/paymentService';
 import * as authContext from '../../context/AuthContext';

@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import Booking from './Booking';
 import { createCheckoutSession, getPaymentConfig } from '../services/paymentService';
 import '@testing-library/jest-dom';
@@ -15,8 +15,8 @@ vi.mock('../services/bookingService', () => ({
   createBooking: vi.fn().mockResolvedValue({ data: { data: { booking: { id: 1 } } } }),
 }));
 
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
+vi.mock('react-router', async () => {
+  const actual = await vi.importActual('react-router');
   return {
     ...actual,
     useLocation: () => ({ state: { hotel: { name: 'Hotel' }, room: { price_per_night: 5000 }, checkIn: '2030-01-01', checkOut: '2030-01-02' } }),

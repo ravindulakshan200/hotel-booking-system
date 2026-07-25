@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router';
 import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';

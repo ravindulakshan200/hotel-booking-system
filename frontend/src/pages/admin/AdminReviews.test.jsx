@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter } from 'react-router';
 import AdminReviews from './AdminReviews';
 import { getAllReviewsAdmin, deleteReview } from '../../services/adminService';
 import { describe, test, expect, vi, beforeEach } from 'vitest';

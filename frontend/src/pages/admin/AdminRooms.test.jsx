@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter } from 'react-router';
 import AdminRooms from './AdminRooms';
 import { getHotels } from '../../services/hotelService';
 import { getAllRooms, deleteRoom, createRoom, updateRoom } from '../../services/adminService';

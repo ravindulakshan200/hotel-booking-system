@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation, Link } from 'react-router';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { getMyBookings, cancelBooking } from '../services/bookingService';
 import { formatCurrency } from '../utils/formatters';

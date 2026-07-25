@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router';
 import { getHotels, searchAvailability } from '../services/hotelService';
 import { formatCurrency } from '../utils/formatters';
 

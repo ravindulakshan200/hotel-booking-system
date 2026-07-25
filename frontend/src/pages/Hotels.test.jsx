@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import Hotels from './Hotels';
 import * as hotelService from '../services/hotelService';
 import { vi } from 'vitest';

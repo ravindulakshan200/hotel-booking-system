@@ -1,2 +1,0 @@
-process.env.JWT_SECRET = "change_this_secret_in_production_to_something_secure";
-process.env.EMAIL_PAYLOAD_ENCRYPTION_KEY = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";

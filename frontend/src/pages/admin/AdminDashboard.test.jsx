@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter } from 'react-router';
 import AdminDashboard from './AdminDashboard';
 import { getDashboardStats } from '../../services/adminService';
 import { describe, test, expect, vi, beforeEach } from 'vitest';

@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter } from 'react-router';
 import AdminHotels from './AdminHotels';
 import { getAllHotelsAdmin, createHotel, updateHotel, deleteHotel } from '../../services/adminService';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
