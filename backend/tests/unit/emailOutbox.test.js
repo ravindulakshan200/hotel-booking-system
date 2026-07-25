@@ -1,8 +1,8 @@
 const test = require("node:test");
 const assert = require("node:assert");
-const EmailOutbox = require("../models/EmailOutbox");
-const emailWorker = require("../services/emailWorker");
-const pool = require("../config/db");
+const EmailOutbox = require('../../models/EmailOutbox');
+const emailWorker = require('../../services/emailWorker');
+const pool = require('../../config/db');
 
 const originalEnv = { ...process.env };
 const originalGetConnection = pool.getConnection;

@@ -4,9 +4,9 @@ const assert = require("node:assert/strict");
 let createdPools = [];
 
 const loadPool = () => {
-  delete require.cache[require.resolve("../config/db")];
-  delete require.cache[require.resolve("../config/env")];
-  const pool = require("../config/db");
+  delete require.cache[require.resolve("../../config/db")];
+  delete require.cache[require.resolve("../../config/env")];
+  const pool = require('../../config/db');
   createdPools.push(pool);
   return pool;
 };

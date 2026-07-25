@@ -1,8 +1,8 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const pool = require("../config/db");
-const Booking = require("../models/Booking");
+const pool = require('../../config/db');
+const Booking = require('../../models/Booking');
 
 const originalGetConnection = pool.getConnection.bind(pool);
 

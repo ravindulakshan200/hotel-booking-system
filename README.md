@@ -92,6 +92,8 @@ JWT_SECRET=replace_with_a_private_random_secret_of_at_least_32_characters
 JWT_EXPIRES_IN=7d
 CLIENT_URL=http://localhost:5173
 APP_TIMEZONE=Asia/Colombo
+STRIPE_PAYMENTS_ENABLED=false
+DEMO_PAYMENTS_ENABLED=false
 ```
 
 Frontend:

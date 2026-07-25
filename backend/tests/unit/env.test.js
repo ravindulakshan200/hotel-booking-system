@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { getJwtSecret, getAllowedOrigins, getTrustProxy, getDbSslConfig, validateEnvironment } = require("../config/env");
+const { getJwtSecret, getAllowedOrigins, getTrustProxy, getDbSslConfig, validateEnvironment } = require('../../config/env');
 
 const originalEnv = { ...process.env };
 
@@ -107,4 +107,28 @@ test("Decoded empty CA is rejected", () => {
 test("Invalid DB_SSL is rejected", () => {
   process.env.DB_SSL = "invalid";
   assert.throws(() => getDbSslConfig(), /'true', 'false', or unset/);
+});
+
+test("validateEnvironment rejects if Stripe is enabled but missing STRIPE_SECRET_KEY", () => {
+  process.env.STRIPE_PAYMENTS_ENABLED = "true";
+  delete process.env.STRIPE_SECRET_KEY;
+  assert.throws(() => validateEnvironment(), /STRIPE_SECRET_KEY is required/);
+});
+
+test("validateEnvironment rejects if Stripe is enabled but missing STRIPE_WEBHOOK_SECRET", () => {
+  process.env.STRIPE_PAYMENTS_ENABLED = "true";
+  process.env.STRIPE_SECRET_KEY = "mock_key";
+  delete process.env.STRIPE_WEBHOOK_SECRET;
+  assert.throws(() => validateEnvironment(), /STRIPE_WEBHOOK_SECRET is required/);
+});
+
+test("validateEnvironment requires FRONTEND_URL in production when Stripe is enabled", () => {
+  process.env.NODE_ENV = "production";
+  process.env.STRIPE_PAYMENTS_ENABLED = "true";
+  process.env.STRIPE_SECRET_KEY = "mock_key";
+  process.env.STRIPE_WEBHOOK_SECRET = "mock_wh";
+  delete process.env.FRONTEND_URL;
+  process.env.JWT_SECRET = "a_very_long_and_secure_jwt_secret_that_is_32_chars";
+
+  assert.throws(() => validateEnvironment(), /FRONTEND_URL is required in production/);
 });

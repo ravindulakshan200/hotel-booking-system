@@ -6,8 +6,8 @@ const {
   validateProfileInput,
   validatePasswordChangeInput,
   validateBookingInput,
-} = require("../utils/validators");
-const { parseDateOnly, getTodayDateOnly } = require("../utils/dateUtils");
+} = require('../../utils/validators');
+const { parseDateOnly, getTodayDateOnly } = require('../../utils/dateUtils');
 
 const addDays = (dateOnly, days) => {
   const date = parseDateOnly(dateOnly);

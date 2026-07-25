@@ -5,7 +5,7 @@ const path = require('path');
 
 test('Migration 003 Safety Test', async (t) => {
   // Read the actual migration SQL
-  const sqlFile = path.join(__dirname, '..', 'database', 'migrations', '003_ensure_account_security_fields.sql');
+  const sqlFile = path.join(__dirname, '../..', 'database', 'migrations', '003_ensure_account_security_fields.sql');
   const sql = fs.readFileSync(sqlFile, 'utf8');
 
   // Extract the UPDATE statement logic manually to test it in JS

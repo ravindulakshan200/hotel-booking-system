@@ -3,8 +3,8 @@ const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
 const path = require("node:path");
 
-const { startServer } = require("../server");
-const pool = require("../config/db");
+const { startServer } = require('../../server');
+const pool = require('../../config/db');
 
 const setupEnv = () => {
   return {
@@ -75,7 +75,7 @@ test("Server starts only after successful DB verification", async () => {
 
 test("Executable entry-point sets non-zero exitCode on startup failure", () => {
   const node = process.execPath;
-  const indexJsPath = path.join(__dirname, "..", "index.js");
+  const indexJsPath = path.join(__dirname, "../..", "index.js");
 
   // Force failure by setting a bad DB port (or host)
   const result = spawnSync(node, [indexJsPath], {

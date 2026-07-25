@@ -154,12 +154,19 @@ const login = async (req, res, next) => {
     // ── 5. Build safe user object (exclude password) ─────────────────────────
     const { password: _pw, ...safeUser } = user;
 
-    // ── 6. Respond ───────────────────────────────────────────────────────────
+    // ── 6. Set cookie ────────────────────────────────────────────────────────
+    res.cookie("jwt", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    // ── 7. Respond ───────────────────────────────────────────────────────────
     return res.status(200).json({
       success: true,
       message: "Login successful.",
       data: {
-        token,
         user: safeUser,
       },
     });
@@ -167,6 +174,22 @@ const login = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+
+/**
+ * @desc    Log out user / clear cookie
+ * @route   POST /api/v1/auth/logout
+ * @access  Public
+ */
+const logout = async (req, res, next) => {
+  res.cookie("jwt", "", {
+    httpOnly: true,
+    expires: new Date(0),
+  });
+  return res.status(200).json({
+    success: true,
+    message: "Logged out successfully.",
+  });
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -269,4 +292,4 @@ const changePassword = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, getProfile, updateProfile, changePassword };
+module.exports = { register, login, logout, getProfile, updateProfile, changePassword };

@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { encryptPayload, decryptPayload } = require("../utils/encryption");
+const { encryptPayload, decryptPayload } = require('../../utils/encryption');
 
 test("Encryption Utility Tests", async (t) => {
   const originalKey = process.env.EMAIL_PAYLOAD_ENCRYPTION_KEY;
