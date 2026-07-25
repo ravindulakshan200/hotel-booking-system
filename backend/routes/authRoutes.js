@@ -15,8 +15,9 @@ const express  = require("express");
 const router   = express.Router();
 
 const { register, login, getProfile, updateProfile, changePassword } = require("../controllers/authController");
+const { forgotPassword, resetPassword, verifyEmail, resendVerification } = require("../controllers/accountRecoveryController");
 const { protect }                     = require("../middleware/authMiddleware");
-const { authLimiter }                 = require("../middleware/rateLimiters");
+const { authLimiter, passwordResetLimiter, verificationLimiter } = require("../middleware/rateLimiters");
 
 // ── Public ────────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,18 @@ router.post("/register", authLimiter, register);
 
 // POST /api/v1/auth/login
 router.post("/login", authLimiter, login);
+
+// POST /api/v1/auth/forgot-password
+router.post("/forgot-password", passwordResetLimiter, forgotPassword);
+
+// POST /api/v1/auth/reset-password
+router.post("/reset-password", passwordResetLimiter, resetPassword);
+
+// GET /api/v1/auth/verify-email/:token
+router.get("/verify-email/:token", verificationLimiter, verifyEmail);
+
+// POST /api/v1/auth/resend-verification
+router.post("/resend-verification", verificationLimiter, resendVerification);
 
 // ── Protected ─────────────────────────────────────────────────────────────────
 

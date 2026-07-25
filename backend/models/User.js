@@ -68,7 +68,7 @@ const User = {
    */
   findUserByEmail: async (email) => {
     const [rows] = await pool.query(
-      `SELECT id, first_name, last_name, email, password, phone, role, created_at
+      `SELECT id, first_name, last_name, email, password, phone, role, created_at, email_verified_at, password_changed_at
        FROM users
        WHERE email = ?
        LIMIT 1`,
@@ -88,7 +88,7 @@ const User = {
    */
   findUserById: async (id) => {
     const [rows] = await pool.query(
-      `SELECT id, first_name, last_name, email, phone, role, created_at
+      `SELECT id, first_name, last_name, email, phone, role, created_at, email_verified_at, password_changed_at
        FROM users
        WHERE id = ?
        LIMIT 1`,
@@ -149,10 +149,69 @@ const User = {
   updatePassword: async (id, newPassword) => {
     const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
     const [result] = await pool.query(
-      "UPDATE users SET password = ? WHERE id = ?",
+      `UPDATE users
+       SET password = ?,
+           password_changed_at = CURRENT_TIMESTAMP,
+           password_reset_token_hash = NULL,
+           password_reset_expires_at = NULL
+       WHERE id = ?`,
       [hashedPassword, id]
     );
     return result.affectedRows;
+  },
+
+  setVerificationToken: async (id, tokenHash, expiresAt) => {
+    const [result] = await pool.query(
+      `UPDATE users
+       SET email_verification_token_hash = ?, email_verification_expires_at = ?
+       WHERE id = ?`,
+      [tokenHash, expiresAt, id]
+    );
+    return result.affectedRows;
+  },
+
+  findUserByVerificationToken: async (tokenHash) => {
+    const [rows] = await pool.query(
+      `SELECT id, first_name, last_name, email, email_verified_at, email_verification_expires_at
+       FROM users
+       WHERE email_verification_token_hash = ?
+       LIMIT 1`,
+      [tokenHash]
+    );
+    return rows[0] || null;
+  },
+
+  verifyEmail: async (id) => {
+    const [result] = await pool.query(
+      `UPDATE users
+       SET email_verified_at = CURRENT_TIMESTAMP,
+           email_verification_token_hash = NULL,
+           email_verification_expires_at = NULL
+       WHERE id = ?`,
+      [id]
+    );
+    return result.affectedRows;
+  },
+
+  setResetToken: async (email, tokenHash, expiresAt) => {
+    const [result] = await pool.query(
+      `UPDATE users
+       SET password_reset_token_hash = ?, password_reset_expires_at = ?
+       WHERE email = ?`,
+      [tokenHash, expiresAt, email]
+    );
+    return result.affectedRows;
+  },
+
+  findUserByResetToken: async (tokenHash) => {
+    const [rows] = await pool.query(
+      `SELECT id, first_name, last_name, email, password_reset_expires_at
+       FROM users
+       WHERE password_reset_token_hash = ?
+       LIMIT 1`,
+      [tokenHash]
+    );
+    return rows[0] || null;
   },
 };
 

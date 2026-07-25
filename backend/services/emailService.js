@@ -78,6 +78,110 @@ const sendBookingConfirmation = async (userEmail, userName, bookingDetails) => {
   }
 };
 
+const sendEmailVerification = async (userEmail, userName, rawToken) => {
+  if (process.env.NODE_ENV === 'test') {
+    return true; // Skip in tests
+  }
+
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const verificationLink = `${frontendUrl}/verify-email/${rawToken}`;
+
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.log(`[Email Mock] Verification link for ${userEmail}: ${verificationLink}`);
+    return true;
+  }
+
+  const transporter = getTransporter();
+  const safeName = escapeHtml(userName);
+
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eaeaea; border-radius: 8px; overflow: hidden;">
+      <div style="background-color: #0d6efd; color: white; padding: 20px; text-align: center;">
+        <h1 style="margin: 0; font-size: 24px;">Verify Your Email</h1>
+      </div>
+      <div style="padding: 20px;">
+        <p>Dear ${safeName},</p>
+        <p>Thank you for registering. Please click the button below to verify your email address and activate your account.</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${verificationLink}" style="background-color: #0d6efd; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Verify Email</a>
+        </div>
+        <p>If the button doesn't work, copy and paste this link into your browser:</p>
+        <p><a href="${verificationLink}">${verificationLink}</a></p>
+        <p>This link will expire in 24 hours.</p>
+      </div>
+    </div>
+  `;
+
+  const mailOptions = {
+    from: `"Hotel Booking System" <${process.env.EMAIL_USER}>`,
+    to: userEmail,
+    subject: `Verify Your Email`,
+    html: htmlContent,
+  };
+
+  try {
+    const sendPromise = transporter.sendMail(mailOptions);
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Email send timeout')), 5000));
+    await Promise.race([sendPromise, timeoutPromise]);
+    return true;
+  } catch (error) {
+    console.error("Error sending email:", error.message);
+    return false;
+  }
+};
+
+const sendPasswordReset = async (userEmail, rawToken) => {
+  if (process.env.NODE_ENV === 'test') {
+    return true;
+  }
+
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const resetLink = `${frontendUrl}/reset-password/${rawToken}`;
+
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.log(`[Email Mock] Password reset link for ${userEmail}: ${resetLink}`);
+    return true;
+  }
+
+  const transporter = getTransporter();
+
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eaeaea; border-radius: 8px; overflow: hidden;">
+      <div style="background-color: #dc3545; color: white; padding: 20px; text-align: center;">
+        <h1 style="margin: 0; font-size: 24px;">Reset Your Password</h1>
+      </div>
+      <div style="padding: 20px;">
+        <p>We received a request to reset the password for your account.</p>
+        <p>Click the button below to choose a new password.</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${resetLink}" style="background-color: #dc3545; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Reset Password</a>
+        </div>
+        <p>If you didn't request this, you can safely ignore this email.</p>
+        <p>This link will expire in 1 hour.</p>
+      </div>
+    </div>
+  `;
+
+  const mailOptions = {
+    from: `"Hotel Booking System" <${process.env.EMAIL_USER}>`,
+    to: userEmail,
+    subject: `Password Reset Request`,
+    html: htmlContent,
+  };
+
+  try {
+    const sendPromise = transporter.sendMail(mailOptions);
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Email send timeout')), 5000));
+    await Promise.race([sendPromise, timeoutPromise]);
+    return true;
+  } catch (error) {
+    console.error("Error sending email:", error.message);
+    return false;
+  }
+};
+
 module.exports = {
   sendBookingConfirmation,
+  sendEmailVerification,
+  sendPasswordReset,
 };

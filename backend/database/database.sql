@@ -42,6 +42,12 @@ CREATE TABLE IF NOT EXISTS users (
   password     VARCHAR(255)   NOT NULL  COMMENT 'bcrypt hash — never store plain text',
   phone        VARCHAR(20)    DEFAULT NULL,
   role         ENUM('admin','customer') NOT NULL DEFAULT 'customer',
+  email_verified_at TIMESTAMP NULL DEFAULT NULL,
+  email_verification_token_hash VARCHAR(255) NULL DEFAULT NULL,
+  email_verification_expires_at TIMESTAMP NULL DEFAULT NULL,
+  password_reset_token_hash VARCHAR(255) NULL DEFAULT NULL,
+  password_reset_expires_at TIMESTAMP NULL DEFAULT NULL,
+  password_changed_at TIMESTAMP NULL DEFAULT NULL,
   created_at   TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at   TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP
                                         ON UPDATE CURRENT_TIMESTAMP,

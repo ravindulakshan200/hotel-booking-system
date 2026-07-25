@@ -66,6 +66,13 @@ const protect = async (req, res, next) => {
       });
     }
 
+    if (user.password_changed_at && (decoded.iat * 1000) < new Date(user.password_changed_at).getTime()) {
+      return res.status(401).json({
+        success: false,
+        message: "Session expired due to a recent password change. Please log in again.",
+      });
+    }
+
     // ── 4. Attach user to the request object and continue ───────────────────
     req.user = user;
     next();

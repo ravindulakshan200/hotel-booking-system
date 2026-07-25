@@ -22,6 +22,8 @@ const {
   validateProfileInput,
   validatePasswordChangeInput,
 } = require("../utils/validators");
+const { generateTokenAndHash } = require("./accountRecoveryController");
+const { sendEmailVerification } = require("../services/emailService");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // REGISTER
@@ -64,20 +66,17 @@ const register = async (req, res, next) => {
       phone,
     });
 
-    // ── 4. Fetch the newly created user (no password field) ──────────────────
-    const newUser = await User.findUserById(newUserId);
+    // ── 4. Generate verification token and send email ────────────────────────
+    const { rawToken, tokenHash } = generateTokenAndHash();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    await User.setVerificationToken(newUserId, tokenHash, expiresAt);
+    await sendEmailVerification(email, first_name, rawToken);
 
-    // ── 5. Generate JWT ──────────────────────────────────────────────────────
-    const token = generateToken(newUser.id);
-
-    // ── 6. Respond ───────────────────────────────────────────────────────────
+    // ── 5. Respond ───────────────────────────────────────────────────────────
     return res.status(201).json({
       success: true,
-      message: "Account created successfully.",
-      data: {
-        token,
-        user: newUser,
-      },
+      message: "Account created successfully. Please verify your email.",
+      data: null,
     });
 
   } catch (error) {
@@ -116,6 +115,13 @@ const login = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         message: "Invalid email or password.",
+      });
+    }
+
+    if (!user.email_verified_at) {
+      return res.status(403).json({
+        success: false,
+        message: "Please verify your email address.",
       });
     }
 

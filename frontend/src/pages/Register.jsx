@@ -16,8 +16,8 @@ const Register = () => {
     setSuccess('');
     try {
       await registerService(formData);
-      setSuccess('Account created successfully. Please sign in.');
-      setTimeout(() => navigate('/login'), 800);
+      setSuccess('Account created successfully. Please check your email to verify your account.');
+      // Do not navigate immediately, let them read the message
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed');
     }

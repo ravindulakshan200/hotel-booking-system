@@ -17,6 +17,9 @@ import Favorites from './pages/Favorites';
 import MyPayments from './pages/MyPayments';
 import NotFound from './pages/NotFound';
 import PaymentSuccess from './pages/PaymentSuccess';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import VerifyEmail from './pages/VerifyEmail';
 
 // Lazy loaded Admin routes (optimization)
 const AdminDashboard = React.lazy(() => import('./pages/admin/AdminDashboard'));
@@ -64,6 +67,9 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password/:token" element={<ResetPassword />} />
+              <Route path="/verify-email/:token" element={<VerifyEmail />} />
               <Route path="/hotels" element={<Hotels />} />
               <Route path="/hotels/:id" element={<HotelDetails />} />
               <Route
