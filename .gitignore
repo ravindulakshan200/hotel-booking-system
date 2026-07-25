@@ -21,3 +21,10 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 .vscode/
+
+# Test coverage
+coverage/
+
+# Temporary files
+tmp/
+temp/
