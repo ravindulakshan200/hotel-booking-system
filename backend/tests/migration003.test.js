@@ -7,12 +7,12 @@ test('Migration 003 Safety Test', async (t) => {
   // Read the actual migration SQL
   const sqlFile = path.join(__dirname, '..', 'database', 'migrations', '003_ensure_account_security_fields.sql');
   const sql = fs.readFileSync(sqlFile, 'utf8');
-  
+
   // Extract the UPDATE statement logic manually to test it in JS
   // The logic is:
   // SET email_verified_at = COALESCE(email_verified_at, created_at)
   // WHERE email_verified_at IS NULL AND created_at < '2026-07-25 00:00:00'
-  
+
   const hasFixedCutoff = sql.includes("created_at < '2026-07-25 00:00:00'");
   assert.ok(hasFixedCutoff, "Migration must include fixed cutoff date");
 
@@ -34,7 +34,7 @@ test('Migration 003 Safety Test', async (t) => {
 
   await t.test('Initial apply', () => {
     applyMigrationLogic();
-    
+
     const legacyUnverified = users.find(u => u.id === 1);
     const legacyVerified = users.find(u => u.id === 2);
     const newUnverified = users.find(u => u.id === 3);
@@ -53,7 +53,7 @@ test('Migration 003 Safety Test', async (t) => {
   await t.test('Rerun applies idempotency (does not verify new user)', () => {
     // Add another new user just in case
     users.push({ id: 4, type: 'newer_unverified', created_at: new Date('2026-09-01T10:00:00Z'), email_verified_at: null });
-    
+
     applyMigrationLogic();
 
     const newUnverified = users.find(u => u.id === 3);
