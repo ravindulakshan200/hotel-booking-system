@@ -108,6 +108,18 @@ const validateEnvironment = () => {
     errors.push(error.message);
   }
 
+  if (process.env.STRIPE_PAYMENTS_ENABLED === "true") {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      errors.push("STRIPE_SECRET_KEY is required when Stripe payments are enabled.");
+    }
+    if (!process.env.STRIPE_WEBHOOK_SECRET) {
+      errors.push("STRIPE_WEBHOOK_SECRET is required when Stripe payments are enabled.");
+    }
+    if (!process.env.FRONTEND_URL && process.env.NODE_ENV === "production") {
+      errors.push("FRONTEND_URL is required in production when Stripe payments are enabled.");
+    }
+  }
+
   const port = Number(process.env.PORT || 5000);
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     errors.push("PORT must be an integer between 1 and 65535.");

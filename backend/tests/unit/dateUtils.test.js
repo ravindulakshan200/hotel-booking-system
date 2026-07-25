@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { parseDateOnly, calculateNights, getTodayDateOnly } = require("../utils/dateUtils");
+const { parseDateOnly, calculateNights, getTodayDateOnly } = require('../../utils/dateUtils');
 
 test("parseDateOnly accepts real ISO calendar dates", () => {
   assert.ok(parseDateOnly("2028-02-29"));

@@ -14,7 +14,7 @@
 const express  = require("express");
 const router   = express.Router();
 
-const { register, login, getProfile, updateProfile, changePassword } = require("../controllers/authController");
+const { register, login, logout, getProfile, updateProfile, changePassword } = require("../controllers/authController");
 const { forgotPassword, resetPassword, verifyEmail, resendVerification } = require("../controllers/accountRecoveryController");
 const { protect }                     = require("../middleware/authMiddleware");
 const { authLimiter, passwordResetLimiter, verificationLimiter } = require("../middleware/rateLimiters");
@@ -26,6 +26,9 @@ router.post("/register", authLimiter, register);
 
 // POST /api/v1/auth/login
 router.post("/login", authLimiter, login);
+
+// POST /api/v1/auth/logout
+router.post("/logout", authLimiter, logout);
 
 // POST /api/v1/auth/forgot-password
 router.post("/forgot-password", passwordResetLimiter, forgotPassword);

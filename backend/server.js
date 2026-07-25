@@ -30,13 +30,24 @@ const startServer = async () => {
   const emailWorker = require("./services/emailWorker");
   emailWorker.start();
 
+  const Booking = require("./models/Booking");
+  const cleanupInterval = setInterval(() => {
+    Booking.expirePendingBookings().catch(err => console.error("Booking cleanup error:", err));
+  }, 60000);
+
+  const originalClose = server.close.bind(server);
+  server.close = (callback) => {
+    clearInterval(cleanupInterval);
+    emailWorker.stop();
+    return originalClose(callback);
+  };
+
   let isShuttingDown = false;
 
   const shutdown = (signal) => {
     if (isShuttingDown) return;
     isShuttingDown = true;
     console.log(`${signal} received. Closing server...`);
-    emailWorker.stop();
     server.close(async () => {
       await pool.end();
     });

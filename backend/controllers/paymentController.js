@@ -5,7 +5,13 @@
 
 const Payment = require("../models/Payment");
 const Booking = require("../models/Booking");
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY || "sk_test_mock_key");
+const getStripeSecret = () => {
+  if (process.env.STRIPE_SECRET_KEY) return process.env.STRIPE_SECRET_KEY;
+  if (process.env.NODE_ENV !== "production") return "sk_test_mock_key";
+  if (process.env.STRIPE_PAYMENTS_ENABLED !== "true") return "disabled_dummy_key";
+  return undefined; // Will naturally throw in stripe module
+};
+const stripe = require("stripe")(getStripeSecret());
 
 const VALID_METHODS = ["card", "cash", "online"];
 const VALID_STATUSES = ["pending", "completed", "refunded", "failed"];
@@ -24,6 +30,9 @@ const getConfig = (req, res, next) => {
 
 const processPayment = async (req, res, next) => {
   try {
+    if (process.env.DEMO_PAYMENTS_ENABLED !== "true") {
+      return res.status(503).json({ success: false, message: "Demo payments are currently disabled." });
+    }
     const { booking_id, payment_method } = req.body;
 
     if (!booking_id || !payment_method) {
@@ -221,6 +230,16 @@ const confirmStripePayment = async (req, res, next) => {
     }
 
     const session = await stripe.checkout.sessions.retrieve(session_id);
+
+    const bookingId = Number(session.metadata.booking_id);
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: "Booking not found." });
+    }
+    if (booking.user_id !== req.user.id) {
+      return res.status(403).json({ success: false, message: "Access denied." });
+    }
+
     await finalizeStripePayment(session);
 
     return res.status(200).json({
@@ -305,7 +324,21 @@ const handleStripeWebhook = async (req, res, next) => {
     res.status(200).json({ received: true });
   } catch (err) {
     console.error("Webhook processing error:", err.message);
-    // Returning 200 avoids Stripe retrying a broken/tampered session forever
+
+    // Identify temporary database or network errors
+    const isTemporaryError =
+      err.code === "ECONNREFUSED" ||
+      err.code === "PROTOCOL_CONNECTION_LOST" ||
+      err.message.includes("deadlock") ||
+      err.message.includes("timeout") ||
+      err.message.includes("pool is closed");
+
+    if (isTemporaryError) {
+      // Return non-2xx to tell Stripe to retry the webhook later
+      return res.status(500).json({ received: false, warning: "Temporary processing error, please retry" });
+    }
+
+    // Returning 200 avoids Stripe retrying a permanently broken/tampered session forever
     res.status(200).json({ received: true, warning: "Processed with error" });
   }
 };

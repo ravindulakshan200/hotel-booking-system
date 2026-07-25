@@ -5,9 +5,9 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || "test-only-secret-with-more-t
 process.env.CLIENT_URL = "http://localhost:5173";
 process.env.NODE_ENV = "test"; // to mock emails
 
-const pool = require("../config/db");
-const createApp = require("../app");
-const User = require("../models/User");
+const pool = require('../../config/db');
+const createApp = require('../../app');
+const User = require('../../models/User');
 
 let server;
 let baseUrl;
@@ -94,7 +94,7 @@ test("Account Recovery & Verification Flows", async (t) => {
     });
     const body = await res.json();
     assert.equal(res.status, 200);
-    assert.ok(body.data.token);
+    assert.ok(res.headers.get("set-cookie")?.includes("jwt="));
   });
 
   await t.test("Forgot password flow returns generic response", async () => {

@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
+const cookieParser = require("cookie-parser");
 
 const { getAllowedOrigins, getTrustProxy } = require("./config/env");
 const HttpError = require("./utils/httpError");
@@ -49,6 +50,7 @@ const createApp = () => {
 
   app.use(express.json({ limit: "100kb" }));
   app.use(express.urlencoded({ extended: false, limit: "100kb" }));
+  app.use(cookieParser());
 
   app.use("/api/v1/health", healthRoutes);
   app.use("/api/v1/auth", authRoutes);

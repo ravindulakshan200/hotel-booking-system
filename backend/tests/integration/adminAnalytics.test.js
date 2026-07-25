@@ -6,9 +6,9 @@ process.env.CLIENT_URL = "http://localhost:5173";
 process.env.NODE_ENV = "test";
 
 // adminAnalytics.test.js runs last in its own subprocess.
-const pool = require("../config/db");
-const createApp = require("../app");
-const generateToken = require("../utils/generateToken");
+const pool = require('../../config/db');
+const createApp = require('../../app');
+const generateToken = require('../../utils/generateToken');
 
 let server;
 let baseUrl;

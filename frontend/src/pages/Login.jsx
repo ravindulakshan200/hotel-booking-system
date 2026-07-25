@@ -21,7 +21,7 @@ const Login = () => {
     setIsUnverified(false);
     try {
       const response = await loginService(email, password);
-      login(response.data?.user || response.data?.data?.user, response.data?.token || response.data?.data?.token);
+      login(response.data?.user || response.data?.data?.user);
       navigate(redirectTo, { replace: true });
     } catch (err) {
       const errorMsg = err.response?.data?.message || 'Login failed';

@@ -29,17 +29,16 @@ const { getJwtSecret } = require("../config/env");
  */
 const protect = async (req, res, next) => {
   try {
-    // ── 1. Extract the token from the Authorization header ──────────────────
+    // ── 1. Extract the token from the cookie or Authorization header ──
     const authHeader = req.headers.authorization;
+    const token = req.cookies.jwt || (authHeader && authHeader.startsWith("Bearer ") ? authHeader.split(" ")[1] : null);
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (!token) {
       return res.status(401).json({
         success: false,
         message: "Access denied. No token provided.",
       });
     }
-
-    const token = authHeader.split(" ")[1]; // "Bearer <token>" → "<token>"
 
     // ── 2. Verify the token ──────────────────────────────────────────────────
     let decoded;

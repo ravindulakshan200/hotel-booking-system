@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { validateHotelInput } = require("../controllers/hotelController");
-const Hotel = require("../models/Hotel");
+const { validateHotelInput } = require('../../controllers/hotelController');
+const Hotel = require('../../models/Hotel');
 
 // Extract the validation logic we want to test
 test("validateHotelInput correctness", async (t) => {
@@ -102,7 +102,7 @@ test("validateHotelInput correctness", async (t) => {
 });
 
 test("Hotel query logic isolation", async (t) => {
-  const pool = require("../config/db");
+  const pool = require('../../config/db');
   const originalQuery = pool.query;
 
   test.after(() => {

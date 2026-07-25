@@ -109,7 +109,7 @@ require('module').prototype.require = function (path) {
   return originalRequire.apply(this, arguments);
 };
 
-const paymentController = require("../controllers/paymentController");
+const paymentController = require('../../controllers/paymentController');
 
 test("Stripe Payment Controller Isolated Tests", async (t) => {
   const req = (overrides) => ({ user: { id: 10 }, body: {}, headers: {}, ...overrides });
@@ -221,9 +221,10 @@ test("Stripe Payment Controller Isolated Tests", async (t) => {
 
   await t.test("Booking metadata mismatch rejection", async () => {
     const request = req({ body: { session_id: "cs_not_found" } });
-    let caught = false;
-    await paymentController.confirmStripePayment(request, res(), (err) => { caught = true; assert.equal(err.message, "Booking not found for session."); });
-    assert.ok(caught);
+    const response = res();
+    await paymentController.confirmStripePayment(request, response, next);
+    assert.equal(response.statusCode, 404);
+    assert.equal(response.data.message, "Booking not found.");
   });
 
   await t.test("Atomic successful finalization", async () => {
