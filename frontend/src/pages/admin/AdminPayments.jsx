@@ -8,6 +8,7 @@ const AdminPayments = () => {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [confirmRefundId, setConfirmRefundId] = useState(null);
 
   const fetchPayments = async () => {
     try {
@@ -23,13 +24,14 @@ const AdminPayments = () => {
   useEffect(() => { fetchPayments(); }, []);
 
   const handleRefund = async (id) => {
-    if (!window.confirm('Issue refund for this payment?')) return;
     setError('');
     try {
       await refundPayment(id);
       fetchPayments();
+      setConfirmRefundId(null);
     } catch (err) {
       setError(err.response?.data?.message || 'Refund failed.');
+      setConfirmRefundId(null);
     }
   };
 
@@ -61,7 +63,14 @@ const AdminPayments = () => {
                     <td><small>{p.transaction_reference}</small></td>
                     <td>
                       {p.payment_status === 'completed' && (
-                        <button className="btn btn-sm btn-outline-warning" onClick={() => handleRefund(p.id)}>Refund</button>
+                        confirmRefundId === p.id ? (
+                          <div className="btn-group">
+                            <button type="button" className="btn btn-sm btn-warning" onClick={() => handleRefund(p.id)}>Confirm Refund</button>
+                            <button type="button" className="btn btn-sm btn-secondary" onClick={() => setConfirmRefundId(null)}>Cancel</button>
+                          </div>
+                        ) : (
+                          <button type="button" className="btn btn-sm btn-outline-warning" onClick={() => setConfirmRefundId(p.id)}>Refund</button>
+                        )
                       )}
                     </td>
                   </tr>

@@ -12,6 +12,7 @@ const MyBookings = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
+  const [confirmCancelId, setConfirmCancelId] = useState(null);
 
   const fetchBookings = async () => {
     try {
@@ -29,13 +30,14 @@ const MyBookings = () => {
   }, []);
 
   const handleCancel = async (id) => {
-    if (!window.confirm("Cancel this booking? Any completed demo payment will be marked as refunded.")) return;
     setActionError('');
     try {
       await cancelBooking(id);
       fetchBookings(); // refresh list
+      setConfirmCancelId(null);
     } catch (err) {
       setActionError(err.response?.data?.message || 'Failed to cancel booking');
+      setConfirmCancelId(null);
     }
   };
 
@@ -101,10 +103,15 @@ const MyBookings = () => {
                         </span>
                       </td>
                       <td className="pe-4 py-3 text-end">
-                        {booking.booking_status !== 'cancelled' && booking.booking_status !== 'completed' ? (
-                          <button className="btn btn-sm btn-outline-danger px-3 rounded-pill" onClick={() => handleCancel(booking.id)}>
-                            Cancel
-                          </button>
+                        {booking.booking_status === 'confirmed' || booking.booking_status === 'pending' ? (
+                          confirmCancelId === booking.id ? (
+                            <div className="btn-group">
+                              <button type="button" className="btn btn-sm btn-danger" onClick={() => handleCancel(booking.id)}>Confirm</button>
+                              <button type="button" className="btn btn-sm btn-secondary" onClick={() => setConfirmCancelId(null)}>Keep</button>
+                            </div>
+                          ) : (
+                            <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => setConfirmCancelId(booking.id)}>Cancel</button>
+                          )
                         ) : booking.booking_status === 'completed' ? (
                           <Link to={`/hotels/${booking.hotel_id}`} className="btn btn-sm btn-outline-primary px-3 rounded-pill">
                             Leave Review

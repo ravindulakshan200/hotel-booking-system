@@ -25,6 +25,7 @@ const HotelDetails = () => {
 
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [favoriteError, setFavoriteError] = useState('');
 
   const [reviewData, setReviewData] = useState({ rating: 5, comment: '' });
   const [reviewLoading, setReviewLoading] = useState(false);
@@ -76,6 +77,7 @@ const HotelDetails = () => {
       return;
     }
     setFavoriteLoading(true);
+    setFavoriteError('');
     try {
       if (isFavorite) {
         await removeFavorite(id);
@@ -85,7 +87,7 @@ const HotelDetails = () => {
         setIsFavorite(true);
       }
     } catch (err) {
-      alert('Failed to update favorites');
+      setFavoriteError('Failed to update favorites');
     } finally {
       setFavoriteLoading(false);
     }
@@ -148,6 +150,7 @@ const HotelDetails = () => {
               <i className={`bi ${isFavorite ? 'bi-heart-fill' : 'bi-heart'} me-1`}></i>
               {isFavorite ? 'Favorited' : 'Add to Favorites'}
             </button>
+            {favoriteError && <span className="text-danger ms-2 fw-bold">{favoriteError}</span>}
           </div>
           <h1 className="display-3 font-serif fw-bold mb-3 text-white">{hotel.name}</h1>
           <p className="lead fs-4 opacity-90 text-white mb-0">
@@ -239,6 +242,7 @@ const HotelDetails = () => {
                           Book Now
                         </button>
                       </div>
+                      {favoriteError && <div className="text-danger mt-2 small">{favoriteError}</div>}
                     </div>
                   </div>
                 ))}

@@ -69,7 +69,7 @@ const Hotels = () => {
 
     // Only search availability if dates are fully provided, else throw error/alert
     if (!formCheckIn || !formCheckOut || !formGuests) {
-        alert("Check-in, Check-out, and Guests are required for availability search.");
+        setError("Check-in, Check-out, and Guests are required for availability search.");
         return;
     }
 

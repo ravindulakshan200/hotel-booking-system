@@ -82,7 +82,7 @@ test('Favorites empty state and remove action', async () => {
   localStorage.setItem('token', 'token');
   
   getMyFavorites.mockResolvedValueOnce({
-    data: { data: { favorites: [{ id: 1, hotel_id: 10, hotel_name: 'Test Hotel', city: 'Colombo' }] } }
+    data: { data: { favorites: [{ id: 1, favorite_id: 101, name: 'Test Hotel', city: 'Colombo' }] } }
   });
   removeFavorite.mockResolvedValueOnce({});
 
@@ -93,7 +93,7 @@ test('Favorites empty state and remove action', async () => {
   const removeBtn = screen.getByTitle('Remove from favorites');
   fireEvent.click(removeBtn);
   
-  await waitFor(() => expect(removeFavorite).toHaveBeenCalledWith(10));
+  await waitFor(() => expect(removeFavorite).toHaveBeenCalledWith(1));
   expect(await screen.findByText(/You haven't added any hotels to your favorites yet/i)).toBeInTheDocument();
 });
 

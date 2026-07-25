@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import HotelDetails from './HotelDetails';
 import * as hotelService from '../services/hotelService';
@@ -20,6 +20,8 @@ vi.mock('../services/reviewService', () => ({
 }));
 vi.mock('../services/favoriteService', () => ({
   getMyFavorites: vi.fn(),
+  addFavorite: vi.fn(),
+  removeFavorite: vi.fn(),
 }));
 
 vi.mock('../context/AuthContext', () => ({
@@ -133,6 +135,38 @@ describe('HotelDetails Component', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Failed to fetch hotel details')).toBeInTheDocument();
+    });
+  });
+
+  test('favorite update failure renders inline feedback and restores loading state', async () => {
+    authContext.useAuth.mockReturnValue({ user: { id: 1, role: 'customer' } });
+
+    hotelService.getHotelById.mockResolvedValue({
+      data: { success: true, data: { hotel: { id: 1, name: 'Fav Hotel', amenities: [] } } }
+    });
+    roomService.getRoomsByHotel.mockResolvedValue({ data: { data: { rooms: [] } } });
+    reviewService.getHotelReviews.mockResolvedValue({ data: { data: { reviews: [] } } });
+    favoriteService.getMyFavorites.mockResolvedValue({ data: { data: { favorites: [] } } });
+    favoriteService.addFavorite.mockRejectedValue(new Error('API failed'));
+
+    render(
+      <MemoryRouter initialEntries={['/hotel/1']}>
+        <Routes>
+          <Route path="/hotel/:id" element={<HotelDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Fav Hotel')).toBeInTheDocument();
+    });
+
+    const favButton = screen.getByRole('button', { name: /add to favorites/i });
+    fireEvent.click(favButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to update favorites')).toBeInTheDocument();
+      expect(favButton).not.toBeDisabled();
     });
   });
 });
