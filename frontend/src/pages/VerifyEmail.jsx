@@ -42,7 +42,7 @@ const VerifyEmail = () => {
                     <p className="text-muted mb-0">Please wait while we verify your email address.</p>
                   </>
                 )}
-                
+
                 {status === 'success' && (
                   <>
                     <div className="d-inline-flex align-items-center justify-content-center rounded-circle mb-3" style={{ width: '64px', height: '64px', background: 'linear-gradient(135deg, #198754, #146c43)', color: '#fff' }}>
