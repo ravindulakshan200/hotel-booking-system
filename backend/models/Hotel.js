@@ -40,6 +40,10 @@ const Hotel = {
       conditions.push("status = 'active'");
     }
 
+    if (!filters.includeArchived) {
+      conditions.push("is_archived = FALSE");
+    }
+
     if (filters.city) {
       conditions.push("LOWER(city) = LOWER(?)");
       params.push(filters.city.trim());
@@ -130,7 +134,7 @@ const Hotel = {
    */
   update: async (id, updates) => {
     // Build SET clause dynamically from provided fields
-    const allowedFields = ["name", "address", "city", "description", "image_url", "star_rating", "amenities", "contact_phone", "contact_email", "map_url", "status"];
+    const allowedFields = ["name", "address", "city", "description", "image_url", "star_rating", "amenities", "contact_phone", "contact_email", "map_url", "status", "is_archived"];
     const setClauses = [];
     const params     = [];
 
@@ -191,7 +195,7 @@ const Hotel = {
         MIN(r.price_per_night) AS starting_price
       FROM hotels h
       JOIN rooms r ON h.id = r.hotel_id
-      WHERE r.availability_status = 'available' AND h.status = 'active'
+      WHERE r.availability_status = 'available' AND h.status = 'active' AND h.is_archived = FALSE AND r.is_archived = FALSE
     `;
     const params = [];
 
@@ -218,7 +222,8 @@ const Hotel = {
     if (filters.check_in && filters.check_out) {
       sql += ` AND r.id NOT IN (
         SELECT room_id FROM bookings
-        WHERE booking_status NOT IN ('cancelled', 'completed')
+        WHERE booking_status NOT IN ('cancelled', 'expired', 'refunded', 'checked_out', 'completed')
+          AND (booking_status != 'pending' OR expires_at IS NULL OR expires_at > NOW())
           AND check_in < ? AND check_out > ?
       )`;
       params.push(filters.check_out, filters.check_in);

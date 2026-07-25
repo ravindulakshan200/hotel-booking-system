@@ -27,6 +27,8 @@ const {
   createHotel,
   updateHotel,
   deleteHotel,
+  archiveHotel,
+  unarchiveHotel
 } = require("../controllers/hotelController");
 
 const { protect }   = require("../middleware/authMiddleware");

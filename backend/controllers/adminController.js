@@ -49,17 +49,24 @@ const getDashboardStats = async (req, res, next) => {
         (SELECT COUNT(*) FROM bookings) AS total_bookings,
         (SELECT COUNT(*) FROM bookings WHERE booking_status = 'pending') AS pending_bookings,
         (SELECT COUNT(*) FROM bookings WHERE booking_status = 'confirmed') AS confirmed_bookings,
-        (SELECT COUNT(*) FROM bookings WHERE booking_status = 'completed') AS completed_bookings,
+        (SELECT COUNT(*) FROM bookings WHERE booking_status IN ('completed', 'checked_out')) AS completed_bookings,
         (SELECT COUNT(*) FROM bookings WHERE booking_status = 'cancelled') AS cancelled_bookings,
-        (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payment_status = 'completed') AS total_revenue,
         (
           SELECT COALESCE(SUM(amount), 0) FROM payments p
           JOIN bookings b ON b.id = p.booking_id
-          WHERE p.payment_status = 'completed' AND b.created_at >= ?
+          WHERE p.payment_status = 'completed'
+            AND NOT (b.booking_status = 'cancelled' AND b.refund_status IN ('required', 'processing', 'completed'))
+        ) AS total_revenue,
+        (
+          SELECT COALESCE(SUM(amount), 0) FROM payments p
+          JOIN bookings b ON b.id = p.booking_id
+          WHERE p.payment_status = 'completed'
+            AND NOT (b.booking_status = 'cancelled' AND b.refund_status IN ('required', 'processing', 'completed'))
+            AND b.created_at >= ?
         ) AS period_revenue,
         (
           SELECT COALESCE(AVG(total_price), 0) FROM bookings
-          WHERE booking_status IN ('confirmed', 'completed') AND created_at >= ?
+          WHERE booking_status IN ('confirmed', 'completed', 'checked_out') AND created_at >= ?
         ) AS avg_booking_value
     `, [startDate, startDate]);
 
@@ -74,7 +81,7 @@ const getDashboardStats = async (req, res, next) => {
           )
         ), 0) AS occupied_room_nights
       FROM bookings
-      WHERE booking_status IN ('confirmed', 'completed')
+      WHERE booking_status IN ('confirmed', 'completed', 'checked_in', 'checked_out')
         AND check_in < ? AND check_out > ?
     `, [endDate, startDate, endDate, startDate]);
 
@@ -109,7 +116,7 @@ const getDashboardStats = async (req, res, next) => {
       FROM hotels h
       JOIN rooms r ON r.hotel_id = h.id
       JOIN bookings b ON b.room_id = r.id
-      WHERE b.booking_status IN ('confirmed', 'completed') AND b.created_at >= ?
+      WHERE b.booking_status IN ('confirmed', 'completed', 'checked_in', 'checked_out') AND b.created_at >= ?
       GROUP BY h.id, h.name
       ORDER BY bookings DESC
       LIMIT 5
@@ -158,7 +165,7 @@ const getDashboardStats = async (req, res, next) => {
     });
 
   } catch (error) {
-    next(error);
+    console.error(error); next(error);
   }
 };
 
@@ -178,7 +185,7 @@ const getAllUsers = async (req, res, next) => {
       data: { count: users.length, users },
     });
   } catch (error) {
-    next(error);
+    console.error(error); next(error);
   }
 };
 
@@ -202,7 +209,7 @@ const getAllHotelsAdmin = async (req, res, next) => {
       },
     });
   } catch (error) {
-    next(error);
+    console.error(error); next(error);
   }
 };
 
@@ -241,7 +248,7 @@ const deleteUser = async (req, res, next) => {
         message: "Cannot delete user â€” they have existing bookings or reviews.",
       });
     }
-    next(error);
+    console.error(error); next(error);
   }
 };
 
@@ -254,25 +261,27 @@ const updateBookingStatus = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Invalid booking ID." });
     }
 
-    const { status } = req.body;
-    const validStatuses = ["pending", "confirmed", "cancelled", "completed"];
+    const { status, reason } = req.body;
+    const validStatuses = ["pending", "confirmed", "checked_in", "checked_out", "cancelled", "no_show", "expired", "refunded", "completed"];
     if (!status || !validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
-        message: "status must be one of: pending, confirmed, cancelled, completed.",
+        message: "Invalid status.",
       });
     }
 
-    await Booking.updateStatusAtomic(id, status);
+    const result = await Booking.updateStatusAtomic(id, status, { actorUserId: req.user.id, reason });
     const updated = await Booking.findById(id);
 
     return res.status(200).json({
       success: true,
-      message: `Booking status updated to '${status}'.`,
-      data: { booking: updated },
+      message: result.refundRequired
+        ? `Booking status updated to '${status}'. A manual refund is pending.`
+        : `Booking status updated to '${status}'.`,
+      data: { booking: updated, refund_required: result.refundRequired },
     });
   } catch (error) {
-    next(error);
+    console.error(error); next(error);
   }
 };
 

@@ -86,7 +86,7 @@ test("demo checkout creates booking and payment in one transaction", async () =>
   assert.ok(connection.calls.includes("commit"));
 });
 
-test("admin status transition locks the booking and refunds on cancellation", async () => {
+test("admin status transition locks the booking and returns refundRequired for paid bookings", async () => {
   const calls = [];
   const connection = {
     calls,
@@ -96,19 +96,80 @@ test("admin status transition locks the booking and refunds on cancellation", as
     release: () => calls.push("release"),
     query: async (sql) => {
       calls.push(sql.replace(/\s+/g, " ").trim());
-      if (sql.includes("SELECT id, booking_status")) {
-        return [[{ id: 42, booking_status: "confirmed" }]];
+      if (sql.includes("SELECT id, booking_status, refund_status")) {
+        return [[{ id: 42, booking_status: "confirmed", refund_status: "not_required" }]];
       }
-      if (sql.includes("UPDATE payments")) return [{ affectedRows: 1 }];
+      if (sql.includes("SELECT id FROM payments")) return [[{ id: 84 }]]; // simulate paid
       if (sql.includes("UPDATE bookings")) return [{ affectedRows: 1 }];
       throw new Error(`Unexpected SQL in test: ${sql}`);
     },
   };
   pool.getConnection = async () => connection;
 
-  const result = await Booking.updateStatusAtomic(42, "cancelled");
+  const result = await Booking.updateStatusAtomic(42, "cancelled", { reason: "test", actorUserId: 1 });
 
-  assert.deepEqual(result, { refundedPayments: 1 });
+  assert.deepEqual(result, { refundRequired: true, newStatus: "cancelled" });
   assert.ok(connection.calls.some((call) => call.includes("FOR UPDATE")));
+  assert.ok(!connection.calls.some((call) => call.includes("UPDATE payments")));
+  assert.ok(connection.calls.some((call) => call.includes("refund_status = 'required'")));
+  assert.ok(connection.calls.includes("commit"));
+});
+
+test("cancellation of unpaid booking works and returns refundRequired: false", async () => {
+  const calls = [];
+  const connection = {
+    calls,
+    beginTransaction: async () => calls.push("begin"),
+    commit: async () => calls.push("commit"),
+    rollback: async () => calls.push("rollback"),
+    release: () => calls.push("release"),
+    query: async (sql) => {
+      calls.push(sql.replace(/\s+/g, " ").trim());
+      if (sql.includes("SELECT id, user_id, booking_status, refund_status")) {
+        return [[{ id: 42, user_id: 1, booking_status: "pending", refund_status: "not_required" }]];
+      }
+      if (sql.includes("SELECT id FROM payments")) return [[]]; // simulate unpaid
+      if (sql.includes("UPDATE bookings")) return [{ affectedRows: 1 }];
+      throw new Error(`Unexpected SQL in test: ${sql}`);
+    },
+  };
+  pool.getConnection = async () => connection;
+
+  const result = await Booking.cancelAtomic(42, { actorUserId: 1, isAdmin: false });
+
+  assert.deepEqual(result, { refundRequired: false, newStatus: "cancelled" });
+  assert.ok(connection.calls.some((call) => call.includes("FOR UPDATE")));
+  assert.ok(!connection.calls.some((call) => call.includes("UPDATE payments")));
+  assert.ok(!connection.calls.some((call) => call.includes("refund_status = 'required'")));
+  assert.ok(connection.calls.includes("commit"));
+});
+
+test("duplicate cancellation does not overwrite existing refund request", async () => {
+  const calls = [];
+  const connection = {
+    calls,
+    beginTransaction: async () => calls.push("begin"),
+    commit: async () => calls.push("commit"),
+    rollback: async () => calls.push("rollback"),
+    release: () => calls.push("release"),
+    query: async (sql) => {
+      calls.push(sql.replace(/\s+/g, " ").trim());
+      // Admin update changes status but it's already a pending refund
+      if (sql.includes("SELECT id, booking_status, refund_status")) {
+        return [[{ id: 42, booking_status: "confirmed", refund_status: "processing" }]];
+      }
+      if (sql.includes("SELECT id FROM payments")) return [[{ id: 84 }]]; // simulate paid
+      if (sql.includes("UPDATE bookings")) return [{ affectedRows: 1 }];
+      throw new Error(`Unexpected SQL in test: ${sql}`);
+    },
+  };
+  pool.getConnection = async () => connection;
+
+  const result = await Booking.updateStatusAtomic(42, "cancelled", { reason: "test", actorUserId: 1 });
+
+  assert.deepEqual(result, { refundRequired: true, newStatus: "cancelled" });
+  assert.ok(connection.calls.some((call) => call.includes("FOR UPDATE")));
+  // Should NOT include the refund_status update clause since it is already processing
+  assert.ok(!connection.calls.some((call) => call.includes("refund_status = 'required'")));
   assert.ok(connection.calls.includes("commit"));
 });

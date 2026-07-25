@@ -3,9 +3,9 @@ const assert = require("node:assert/strict");
 
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test-only-secret-with-more-than-32-characters";
 process.env.CLIENT_URL = "http://localhost:5173";
+process.env.NODE_ENV = "test";
 
-// adminAnalytics.test.js runs last in its own subprocess (see package.json).
-// pool.end() here drains the shared MySQL pool so the subprocess exits cleanly.
+// adminAnalytics.test.js runs last in its own subprocess.
 const pool = require("../config/db");
 const createApp = require("../app");
 const generateToken = require("../utils/generateToken");
@@ -14,19 +14,83 @@ let server;
 let baseUrl;
 let adminToken;
 let customerToken;
+let queryCalls = [];
+let mockEmptyResults = false;
+
+const originalQuery = pool.query.bind(pool);
 
 test.before(async () => {
+  pool.query = async (sql, params) => {
+    const s = sql.replace(/\s+/g, " ").trim();
+    queryCalls.push({ sql: s, params });
+
+    // Mock user fetching for Auth Middleware
+    if (s.includes("SELECT id, first_name, last_name, email, phone, role, created_at, email_verified_at, password_changed_at FROM users WHERE id = ?")) {
+      const id = params[0];
+      if (id === 1) return [[{ id: 1, role: "admin", email_verified_at: "2025-01-01" }]];
+      if (id === 2) return [[{ id: 2, role: "customer", email_verified_at: "2025-01-01" }]];
+      return [[]];
+    }
+
+    if (s.includes("SELECT (SELECT COUNT(*) FROM users WHERE role = 'customer') AS total_users")) {
+      if (mockEmptyResults) {
+        return [[{
+          total_users: 0, total_hotels: 0, total_rooms: 0, total_bookings: 0,
+          pending_bookings: 0, confirmed_bookings: 0, completed_bookings: 0, cancelled_bookings: 0,
+          total_revenue: 0, period_revenue: 0, avg_booking_value: 0
+        }]];
+      }
+      return [[{
+        total_users: 10, total_hotels: 2, total_rooms: 20, total_bookings: 15,
+        pending_bookings: 2, confirmed_bookings: 5, completed_bookings: 6, cancelled_bookings: 2,
+        total_revenue: 15000, period_revenue: 5000, avg_booking_value: 200
+      }]];
+    }
+
+    if (s.includes("AS occupied_room_nights")) {
+      return [[{ occupied_room_nights: mockEmptyResults ? 0 : 50 }]];
+    }
+
+    if (s.includes("label, COUNT(*) AS bookings")) {
+      return [mockEmptyResults ? [] : [{ label: "2026-07-25", bookings: 2, revenue: 400 }]];
+    }
+
+    if (s.includes("booking_status AS name, COUNT(*) AS value")) {
+      return [mockEmptyResults ? [] : [{ name: "confirmed", value: 5 }]];
+    }
+
+    if (s.includes("SELECT h.name, COUNT(b.id) AS bookings")) {
+      return [mockEmptyResults ? [] : [{ name: "Grand", bookings: 3 }]];
+    }
+
+    if (s.includes("SELECT b.id, b.check_in, b.check_out")) {
+      return [mockEmptyResults ? [] : [{
+        id: 1, check_in: "2026-01-01", check_out: "2026-01-05", total_price: "500",
+        booking_status: "confirmed", created_at: "2026-01-01",
+        first_name: "John", last_name: "Doe", hotel_name: "Grand", room_number: "101"
+      }]];
+    }
+
+    throw new Error("Unexpected SQL in mock: " + s);
+  };
+
   server = createApp().listen(0);
   await new Promise((resolve) => server.once("listening", resolve));
   baseUrl = `http://127.0.0.1:${server.address().port}`;
-  // Seed data: user ID 1 = admin, user ID 2 = customer
+  // Seed data mock: user ID 1 = admin, user ID 2 = customer
   adminToken = generateToken(1);
   customerToken = generateToken(2);
 });
 
 test.after(async () => {
+  pool.query = originalQuery;
   await new Promise((resolve) => server.close(resolve));
   await pool.end();
+});
+
+test.afterEach(() => {
+  queryCalls = [];
+  mockEmptyResults = false;
 });
 
 test("Admin Analytics API", async (t) => {
@@ -111,6 +175,37 @@ test("Admin Analytics API", async (t) => {
     const body = await res.json();
     assert.equal(res.status, 200);
     assert.equal(body.success, true);
+  });
+
+  // ── Empty analytics results ───────────────────────────────────────────────
+  await t.test("empty analytics results structure handles 0 gracefully", async () => {
+    mockEmptyResults = true;
+    const res = await fetch(`${baseUrl}/api/v1/admin/dashboard?period=30days`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+    const body = await res.json();
+    assert.equal(res.status, 200);
+    assert.equal(body.success, true);
+    assert.equal(body.data.overview.total_bookings, 0);
+    assert.equal(body.data.overview.occupancy_rate, 0);
+    assert.equal(body.data.charts.bookingTrend.length, 0);
+    assert.equal(body.data.recentBookings.length, 0);
+  });
+
+  // ── Phase 3 SQL correctness verification ──────────────────────────────────
+  await t.test("Phase 3 SQL query correctness for booking lifecycle", async () => {
+    // Make a request so queryCalls is populated
+    await fetch(`${baseUrl}/api/v1/admin/dashboard`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+
+    const overviewCall = queryCalls.find(c => c.sql.includes("total_users"));
+    assert.ok(overviewCall.sql.includes("booking_status IN ('completed', 'checked_out')"), "SQL missing checked_out in completed bookings count");
+    assert.ok(overviewCall.sql.includes("NOT (b.booking_status = 'cancelled' AND b.refund_status IN ('required', 'processing', 'completed'))"), "SQL missing refund exclusion from revenue");
+    assert.ok(overviewCall.sql.includes("p.payment_status = 'completed'"), "SQL missing payment_status=completed check");
+
+    const occupancyCall = queryCalls.find(c => c.sql.includes("occupied_room_nights"));
+    assert.ok(occupancyCall.sql.includes("booking_status IN ('confirmed', 'completed', 'checked_in', 'checked_out')"), "SQL missing checked statuses in occupancy");
   });
 
   // ── /analytics alias (backward compat) ───────────────────────────────────

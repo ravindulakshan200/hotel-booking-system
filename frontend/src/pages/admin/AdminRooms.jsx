@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import AdminLayout from '../../layouts/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { getHotels } from '../../services/hotelService';
-import { getAllRooms, createRoom, updateRoom, deleteRoom } from '../../services/adminService';
+import { getAllRooms, createRoom, updateRoom, deleteRoom, archiveRoom, unarchiveRoom } from '../../services/adminService';
 import { formatCurrency } from '../../utils/formatters';
 
 const emptyForm = {
@@ -88,6 +88,19 @@ const AdminRooms = () => {
     }
   };
 
+  const handleToggleArchive = async (id, isArchived) => {
+    try {
+      if (isArchived) {
+        await unarchiveRoom(id);
+      } else {
+        await archiveRoom(id);
+      }
+      fetchData();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to toggle archive status.');
+    }
+  };
+
   return (
     <AdminLayout title="Manage Rooms">
       {error && <div className="alert alert-danger">{error}</div>}
@@ -110,9 +123,15 @@ const AdminRooms = () => {
                     <td className="text-capitalize">{r.room_type}</td>
                     <td>{formatCurrency(r.price_per_night)}</td>
                     <td>{r.capacity}</td>
-                    <td><span className={`badge bg-${r.availability_status === 'available' ? 'success' : 'secondary'}`}>{r.availability_status}</span></td>
                     <td>
-                      <button className="btn btn-sm btn-outline-primary me-2" onClick={() => openEdit(r)}>Edit</button>
+                      <span className={`badge bg-${r.availability_status === 'available' ? 'success' : 'secondary'} me-1`}>{r.availability_status}</span>
+                      {r.is_archived && <span className="badge bg-warning text-dark">Archived</span>}
+                    </td>
+                    <td>
+                      <button className="btn btn-sm btn-outline-primary me-1" onClick={() => openEdit(r)}>Edit</button>
+                      <button className="btn btn-sm btn-outline-warning me-1" onClick={() => handleToggleArchive(r.id, r.is_archived)}>
+                        {r.is_archived ? 'Unarchive' : 'Archive'}
+                      </button>
                       {confirmDeleteId === r.id ? (
                         <div className="btn-group">
                           <button className="btn btn-sm btn-danger" onClick={() => handleConfirmDelete(r.id)}>Yes, Delete</button>

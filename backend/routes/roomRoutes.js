@@ -12,6 +12,8 @@ const {
   updateRoom,
   deleteRoom,
   checkRoomAvailability,
+  archiveRoom,
+  unarchiveRoom,
 } = require("../controllers/roomController");
 
 const { protect } = require("../middleware/authMiddleware");
@@ -25,6 +27,9 @@ router.route("/:id")
   .get(getRoomById)
   .put(protect, adminOnly, updateRoom)
   .delete(protect, adminOnly, deleteRoom);
+
+router.patch("/:id/archive", protect, adminOnly, archiveRoom);
+router.patch("/:id/unarchive", protect, adminOnly, unarchiveRoom);
 
 router.get("/:id/availability", checkRoomAvailability);
 

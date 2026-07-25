@@ -58,7 +58,8 @@ test("Account Recovery & Verification Flows", async (t) => {
   let rawToken;
 
   await t.test("Fetch token from DB for verification test", async () => {
-    const user = await User.findUserByEmail(testEmail);
+    const [rows] = await pool.query("SELECT email_verification_token_hash FROM users WHERE email = ?", [testEmail]);
+    const user = rows[0];
     assert.ok(user.email_verification_token_hash);
     tokenHash = user.email_verification_token_hash;
     // We can't get rawToken from DB, so we'll simulate the endpoint by bypassing DB for the raw token

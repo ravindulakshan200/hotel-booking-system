@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS hotels (
   contact_email VARCHAR(150)  DEFAULT NULL,
   map_url      VARCHAR(500)   DEFAULT NULL,
   status       ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+  is_archived  BOOLEAN        NOT NULL DEFAULT FALSE,
   created_at   TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at   TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP
                                         ON UPDATE CURRENT_TIMESTAMP,
@@ -89,7 +90,8 @@ CREATE TABLE IF NOT EXISTS hotels (
   PRIMARY KEY (id),
 
   -- Indexes
-  INDEX idx_hotels_city (city)
+  INDEX idx_hotels_city (city),
+  INDEX idx_hotels_archived (is_archived)
 
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
@@ -125,6 +127,7 @@ CREATE TABLE IF NOT EXISTS rooms (
                         'maintenance'
                       )               NOT NULL DEFAULT 'available',
   image_url           VARCHAR(500)    DEFAULT NULL,
+  is_archived         BOOLEAN         NOT NULL DEFAULT FALSE,
   created_at          TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at          TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP
                                                ON UPDATE CURRENT_TIMESTAMP,
@@ -148,7 +151,8 @@ CREATE TABLE IF NOT EXISTS rooms (
   -- Indexes
   INDEX idx_rooms_hotel_id          (hotel_id),
   INDEX idx_rooms_availability      (availability_status),
-  INDEX idx_rooms_type_price        (room_type, price_per_night)
+  INDEX idx_rooms_type_price        (room_type, price_per_night),
+  INDEX idx_rooms_archived          (is_archived)
 
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
@@ -178,9 +182,25 @@ CREATE TABLE IF NOT EXISTS bookings (
   booking_status  ENUM(
                     'pending',
                     'confirmed',
+                    'checked_in',
+                    'checked_out',
                     'cancelled',
+                    'no_show',
+                    'expired',
+                    'refunded',
                     'completed'
                   )               NOT NULL DEFAULT 'pending',
+  expires_at      TIMESTAMP       NULL DEFAULT NULL,
+  cancelled_at    TIMESTAMP       NULL DEFAULT NULL,
+  cancellation_reason VARCHAR(255) NULL DEFAULT NULL,
+  cancelled_by_user_id INT        NULL DEFAULT NULL,
+  checked_in_at   TIMESTAMP       NULL DEFAULT NULL,
+  checked_out_at  TIMESTAMP       NULL DEFAULT NULL,
+  no_show_at      TIMESTAMP       NULL DEFAULT NULL,
+  refund_status   VARCHAR(20)     NOT NULL DEFAULT 'not_required'
+                    COMMENT 'not_required, required, processing, completed, failed',
+  refund_requested_at TIMESTAMP   NULL DEFAULT NULL,
+  refund_completed_at TIMESTAMP   NULL DEFAULT NULL,
   created_at      TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at      TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP
                                            ON UPDATE CURRENT_TIMESTAMP,
@@ -209,12 +229,20 @@ CREATE TABLE IF NOT EXISTS bookings (
     ON DELETE RESTRICT
     ON UPDATE CASCADE,
 
+  -- Foreign key: cancellation actor
+  CONSTRAINT fk_bookings_cancelled_by
+    FOREIGN KEY (cancelled_by_user_id)
+    REFERENCES users (id)
+    ON DELETE SET NULL
+    ON UPDATE CASCADE,
+
   -- Indexes
   INDEX idx_bookings_user_id        (user_id),
   INDEX idx_bookings_room_id        (room_id),
   INDEX idx_bookings_room_overlap   (room_id, booking_status, check_in, check_out),
   INDEX idx_bookings_status         (booking_status),
-  INDEX idx_bookings_dates          (check_in, check_out)
+  INDEX idx_bookings_dates          (check_in, check_out),
+  INDEX idx_bookings_expires_at     (expires_at)
 
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4

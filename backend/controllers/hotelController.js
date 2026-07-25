@@ -447,6 +447,48 @@ const deleteHotel = async (req, res, next) => {
   }
 };
 
+/**
+ * @desc    Archive a hotel
+ * @route   PATCH /api/v1/hotels/:id/archive
+ * @access  Admin
+ */
+const archiveHotel = async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id) || id < 1) return res.status(400).json({ success: false, message: "Invalid hotel ID." });
+
+    const existing = await Hotel.findById(id);
+    if (!existing) return res.status(404).json({ success: false, message: "Hotel not found." });
+    if (existing.is_archived) return res.status(400).json({ success: false, message: "Hotel is already archived." });
+
+    await Hotel.update(id, { is_archived: true });
+    return res.status(200).json({ success: true, message: "Hotel archived successfully." });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Unarchive a hotel
+ * @route   PATCH /api/v1/hotels/:id/unarchive
+ * @access  Admin
+ */
+const unarchiveHotel = async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id) || id < 1) return res.status(400).json({ success: false, message: "Invalid hotel ID." });
+
+    const existing = await Hotel.findById(id);
+    if (!existing) return res.status(404).json({ success: false, message: "Hotel not found." });
+    if (!existing.is_archived) return res.status(400).json({ success: false, message: "Hotel is not archived." });
+
+    await Hotel.update(id, { is_archived: false });
+    return res.status(200).json({ success: true, message: "Hotel unarchived successfully." });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllHotels,
   searchAvailability,
@@ -454,5 +496,7 @@ module.exports = {
   createHotel,
   updateHotel,
   deleteHotel,
+  archiveHotel,
+  unarchiveHotel,
   validateHotelInput, // exported for testing
 };

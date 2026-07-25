@@ -13,9 +13,10 @@ const Room = {
 
     if (filters.check_in && filters.check_out && filters.guests) {
       selectClause = `SELECT *,
-        (availability_status = 'available' AND capacity >= ? AND id NOT IN (
+        (availability_status = 'available' AND is_archived = FALSE AND capacity >= ? AND id NOT IN (
           SELECT room_id FROM bookings
-          WHERE booking_status NOT IN ('cancelled', 'completed')
+          WHERE booking_status NOT IN ('cancelled', 'expired', 'refunded', 'checked_out', 'completed')
+            AND (booking_status != 'pending' OR expires_at IS NULL OR expires_at > NOW())
             AND check_in < ? AND check_out > ?
         )) AS is_available`;
       params.push(filters.guests, filters.check_out, filters.check_in);
@@ -43,6 +44,10 @@ const Room = {
     if (filters.max_price) {
       conditions.push("price_per_night <= ?");
       params.push(filters.max_price);
+    }
+
+    if (!filters.includeArchived) {
+      conditions.push("is_archived = FALSE");
     }
 
     if (conditions.length > 0) {
@@ -81,7 +86,7 @@ const Room = {
   },
 
   update: async (id, updates) => {
-    const allowedFields = ["hotel_id", "room_number", "room_type", "price_per_night", "capacity", "availability_status", "image_url"];
+    const allowedFields = ["hotel_id", "room_number", "room_type", "price_per_night", "capacity", "availability_status", "image_url", "is_archived"];
     const setClauses = [];
     const params = [];
 

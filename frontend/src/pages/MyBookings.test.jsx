@@ -55,7 +55,7 @@ describe('MyBookings Component', () => {
     fireEvent.click(confirmBtn);
 
     await waitFor(() => {
-      expect(bookingService.cancelBooking).toHaveBeenCalledWith(1);
+      expect(bookingService.cancelBooking).toHaveBeenCalledWith(1, '');
       expect(bookingService.getMyBookings).toHaveBeenCalledTimes(2);
       expect(screen.queryByRole('button', { name: 'Confirm' })).not.toBeInTheDocument();
     });

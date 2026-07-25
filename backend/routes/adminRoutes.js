@@ -36,4 +36,8 @@ router.get("/hotels",         getAllHotelsAdmin);
 // Booking status management (admin override)
 router.patch("/bookings/:id/status", updateBookingStatus);
 
+// Cleanup expired bookings manually (admin)
+const { cleanupExpiredBookings } = require("../controllers/bookingController");
+router.post("/bookings/cleanup-expired", cleanupExpiredBookings);
+
 module.exports = router;

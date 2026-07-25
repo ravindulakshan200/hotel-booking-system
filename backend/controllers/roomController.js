@@ -307,6 +307,38 @@ const checkRoomAvailability = async (req, res, next) => {
   }
 };
 
+const archiveRoom = async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id) || id < 1) return res.status(400).json({ success: false, message: "Invalid room ID." });
+
+    const existing = await Room.findById(id);
+    if (!existing) return res.status(404).json({ success: false, message: "Room not found." });
+    if (existing.is_archived) return res.status(400).json({ success: false, message: "Room is already archived." });
+
+    await Room.update(id, { is_archived: true });
+    return res.status(200).json({ success: true, message: "Room archived successfully." });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const unarchiveRoom = async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id) || id < 1) return res.status(400).json({ success: false, message: "Invalid room ID." });
+
+    const existing = await Room.findById(id);
+    if (!existing) return res.status(404).json({ success: false, message: "Room not found." });
+    if (!existing.is_archived) return res.status(400).json({ success: false, message: "Room is not archived." });
+
+    await Room.update(id, { is_archived: false });
+    return res.status(200).json({ success: true, message: "Room unarchived successfully." });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllRooms,
   getRoomById,
@@ -314,4 +346,6 @@ module.exports = {
   updateRoom,
   deleteRoom,
   checkRoomAvailability,
+  archiveRoom,
+  unarchiveRoom,
 };

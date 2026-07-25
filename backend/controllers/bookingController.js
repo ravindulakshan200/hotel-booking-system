@@ -4,7 +4,7 @@ const { validateBookingInput } = require("../utils/validators");
 const { sendBookingConfirmation } = require("../services/emailService");
 
 const VALID_PAYMENT_METHODS = ["card", "cash", "online"];
-const VALID_BOOKING_STATUSES = ["pending", "confirmed", "cancelled", "completed"];
+const VALID_BOOKING_STATUSES = ["pending", "confirmed", "checked_in", "checked_out", "cancelled", "no_show", "expired", "refunded", "completed"];
 
 const parseId = (value) => {
   const id = Number(value);
@@ -118,19 +118,25 @@ const cancelBooking = async (req, res, next) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ success: false, message: "Invalid booking ID." });
 
+    const { reason } = req.body || {};
+    if (reason && reason.length > 255) {
+      return res.status(400).json({ success: false, message: "Cancellation reason is too long." });
+    }
+
     const result = await Booking.cancelAtomic(id, {
       actorUserId: req.user.id,
       isAdmin: req.user.role === "admin",
+      reason
     });
     const booking = await Booking.findById(id);
 
     return res.status(200).json({
       success: true,
       message:
-        result.refundedPayments > 0
-          ? "Booking cancelled and demo payment marked as refunded."
+        result.refundRequired
+          ? "Booking cancelled. A manual refund is pending."
           : "Booking cancelled successfully.",
-      data: { booking, refunded_payments: result.refundedPayments },
+      data: { booking, refund_required: result.refundRequired },
     });
   } catch (error) {
     next(error);
@@ -161,6 +167,19 @@ const getAllBookings = async (req, res, next) => {
   }
 };
 
+const cleanupExpiredBookings = async (req, res, next) => {
+  try {
+    const expiredCount = await Booking.expirePendingBookings();
+    return res.status(200).json({
+      success: true,
+      message: `Cleaned up ${expiredCount} expired pending bookings.`,
+      data: { expired_count: expiredCount },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createBooking,
   checkoutBooking,
@@ -168,4 +187,5 @@ module.exports = {
   getBookingById,
   cancelBooking,
   getAllBookings,
+  cleanupExpiredBookings,
 };

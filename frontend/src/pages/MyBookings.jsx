@@ -13,6 +13,7 @@ const MyBookings = () => {
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
   const [confirmCancelId, setConfirmCancelId] = useState(null);
+  const [cancelReason, setCancelReason] = useState('');
 
   const fetchBookings = async () => {
     try {
@@ -32,9 +33,10 @@ const MyBookings = () => {
   const handleCancel = async (id) => {
     setActionError('');
     try {
-      await cancelBooking(id);
+      await cancelBooking(id, cancelReason);
       fetchBookings(); // refresh list
       setConfirmCancelId(null);
+      setCancelReason('');
     } catch (err) {
       setActionError(err.response?.data?.message || 'Failed to cancel booking');
       setConfirmCancelId(null);
@@ -98,16 +100,35 @@ const MyBookings = () => {
                       </td>
                       <td className="py-3 fw-bold text-accent">{formatCurrency(booking.total_price)}</td>
                       <td className="py-3">
-                        <span className={`status-badge ${booking.booking_status === 'confirmed' ? 'success' : booking.booking_status === 'cancelled' ? 'danger' : 'info'}`}>
+                        <span className={`status-badge ${booking.booking_status === 'confirmed' || booking.booking_status === 'completed' || booking.booking_status === 'checked_in' || booking.booking_status === 'checked_out' ? 'success' : booking.booking_status === 'cancelled' || booking.booking_status === 'expired' || booking.booking_status === 'refunded' ? 'danger' : 'info'}`}>
                           {booking.booking_status}
                         </span>
+                        {booking.booking_status === 'pending' && booking.expires_at && (
+                          <div className="text-muted mt-1" style={{ fontSize: '0.75rem' }}>
+                            Expires: {new Date(booking.expires_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                          </div>
+                        )}
+                        {booking.refund_status === 'required' && (
+                          <div className="text-warning fw-bold mt-1" style={{ fontSize: '0.75rem' }}>
+                            <i className="bi bi-clock-history me-1"></i> Refund pending
+                          </div>
+                        )}
                       </td>
                       <td className="pe-4 py-3 text-end">
-                        {booking.booking_status === 'confirmed' || booking.booking_status === 'pending' ? (
+                        {['confirmed', 'pending'].includes(booking.booking_status) ? (
                           confirmCancelId === booking.id ? (
-                            <div className="btn-group">
-                              <button type="button" className="btn btn-sm btn-danger" onClick={() => handleCancel(booking.id)}>Confirm</button>
-                              <button type="button" className="btn btn-sm btn-secondary" onClick={() => setConfirmCancelId(null)}>Keep</button>
+                            <div className="d-flex flex-column align-items-end gap-2">
+                              <input
+                                type="text"
+                                className="form-control form-control-sm"
+                                placeholder="Reason (optional)"
+                                value={cancelReason}
+                                onChange={(e) => setCancelReason(e.target.value)}
+                              />
+                              <div className="btn-group">
+                                <button type="button" className="btn btn-sm btn-danger" onClick={() => handleCancel(booking.id)}>Confirm</button>
+                                <button type="button" className="btn btn-sm btn-secondary" onClick={() => { setConfirmCancelId(null); setCancelReason(''); }}>Keep</button>
+                              </div>
                             </div>
                           ) : (
                             <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => setConfirmCancelId(booking.id)}>Cancel</button>

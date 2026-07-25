@@ -1,7 +1,7 @@
 import React, { useEffect, useCallback, useState } from 'react';
 import AdminLayout from '../../layouts/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
-import { getAllBookings, updateBookingStatus } from '../../services/adminService';
+import { getAllBookings, updateBookingStatus, cleanupExpiredBookings } from '../../services/adminService';
 import { formatCurrency } from '../../utils/formatters';
 
 const AdminBookings = () => {
@@ -41,19 +41,38 @@ const AdminBookings = () => {
     }
   };
 
+  const handleCleanupExpired = async () => {
+    setActionMessage('');
+    try {
+      const res = await cleanupExpiredBookings();
+      setActionMessage(res.data?.message || 'Expired bookings cleaned up.');
+      await fetchBookings();
+    } catch (err) {
+      setActionMessage(err.response?.data?.message || 'Failed to clean up expired bookings.');
+    }
+  };
+
   return (
     <AdminLayout title="Manage Bookings">
       {error && <div className="alert alert-danger">{error}</div>}
       {actionMessage && <div className="alert alert-info">{actionMessage}</div>}
 
-      <div className="mb-3">
+      <div className="d-flex justify-content-between mb-3">
         <select className="form-select w-auto" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="">All Statuses</option>
           <option value="pending">Pending</option>
           <option value="confirmed">Confirmed</option>
+          <option value="checked_in">Checked In</option>
+          <option value="checked_out">Checked Out</option>
           <option value="cancelled">Cancelled</option>
+          <option value="no_show">No Show</option>
+          <option value="expired">Expired</option>
+          <option value="refunded">Refunded</option>
           <option value="completed">Completed</option>
         </select>
+        <button className="btn btn-warning" onClick={handleCleanupExpired}>
+          Cleanup Expired Bookings
+        </button>
       </div>
 
       {loading ? <LoadingSpinner /> : (
@@ -84,9 +103,19 @@ const AdminBookings = () => {
                       >
                         <option value="pending">Pending</option>
                         <option value="confirmed">Confirmed</option>
+                        <option value="checked_in">Checked In</option>
+                        <option value="checked_out">Checked Out</option>
                         <option value="cancelled">Cancelled</option>
+                        <option value="no_show">No Show</option>
+                        <option value="expired">Expired</option>
+                        <option value="refunded">Refunded</option>
                         <option value="completed">Completed</option>
                       </select>
+                      {b.refund_status === 'required' && (
+                        <div className="badge bg-warning text-dark w-100 mt-1">
+                          <i className="bi bi-clock-history me-1"></i> Refund Pending
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}

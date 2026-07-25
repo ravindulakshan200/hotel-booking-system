@@ -31,6 +31,16 @@ export const deleteHotel = async (id) => {
   return response;
 };
 
+export const archiveHotel = async (id) => {
+  const response = await api.patch(`/hotels/${id}/archive`);
+  return response;
+};
+
+export const unarchiveHotel = async (id) => {
+  const response = await api.patch(`/hotels/${id}/unarchive`);
+  return response;
+};
+
 export const createRoom = async (data) => {
   const response = await api.post('/rooms', data);
   return response;
@@ -46,6 +56,16 @@ export const deleteRoom = async (id) => {
   return response;
 };
 
+export const archiveRoom = async (id) => {
+  const response = await api.patch(`/rooms/${id}/archive`);
+  return response;
+};
+
+export const unarchiveRoom = async (id) => {
+  const response = await api.patch(`/rooms/${id}/unarchive`);
+  return response;
+};
+
 export const getAllRooms = async (params = '') => {
   const response = await api.get(`/rooms${params ? `?${params}` : ''}`);
   return response;
@@ -58,6 +78,11 @@ export const getAllBookings = async (params = '') => {
 
 export const updateBookingStatus = async (id, status) => {
   const response = await api.patch(`/admin/bookings/${id}/status`, { status });
+  return response;
+};
+
+export const cleanupExpiredBookings = async () => {
+  const response = await api.post('/admin/bookings/cleanup-expired');
   return response;
 };
 

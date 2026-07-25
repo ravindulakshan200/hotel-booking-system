@@ -26,7 +26,8 @@ const assertNoOverlap = async (connection, roomId, checkIn, checkOut) => {
     `SELECT id
      FROM bookings
      WHERE room_id = ?
-       AND booking_status NOT IN ('cancelled', 'completed')
+       AND booking_status NOT IN ('cancelled', 'expired', 'refunded', 'checked_out', 'completed')
+       AND (booking_status != 'pending' OR expires_at IS NULL OR expires_at > NOW())
        AND check_in < ?
        AND check_out > ?
      LIMIT 1`,
@@ -40,15 +41,15 @@ const assertNoOverlap = async (connection, roomId, checkIn, checkOut) => {
 
 const insertBooking = async (
   connection,
-  { userId, roomId, checkIn, checkOut, pricePerNight, status }
+  { userId, roomId, checkIn, checkOut, pricePerNight, status, expiresAt = null }
 ) => {
   const nights = calculateNights(checkIn, checkOut);
   const totalPrice = (Number(pricePerNight) * nights).toFixed(2);
   const [result] = await connection.query(
     `INSERT INTO bookings
-       (user_id, room_id, check_in, check_out, total_price, booking_status)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [userId, roomId, checkIn, checkOut, totalPrice, status]
+       (user_id, room_id, check_in, check_out, total_price, booking_status, expires_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [userId, roomId, checkIn, checkOut, totalPrice, status, expiresAt]
   );
 
   return { bookingId: result.insertId, totalPrice };
@@ -150,6 +151,7 @@ const Booking = {
         checkOut: check_out,
         pricePerNight: room.price_per_night,
         status: "pending",
+        expiresAt: new Date(Date.now() + 15 * 60000), // 15 mins
       });
       await connection.commit();
       return bookingId;
@@ -200,7 +202,7 @@ const Booking = {
     try {
       await connection.beginTransaction();
       const [rows] = await connection.query(
-        "SELECT id, user_id, booking_status FROM bookings WHERE id = ? LIMIT 1 FOR UPDATE",
+        "SELECT id, user_id, booking_status, refund_status FROM bookings WHERE id = ? LIMIT 1 FOR UPDATE",
         [id]
       );
       const booking = rows[0];
@@ -216,18 +218,30 @@ const Booking = {
         throw new HttpError(400, "Cannot cancel a completed booking.");
       }
 
-      const [refundResult] = await connection.query(
-        `UPDATE payments
-         SET payment_status = 'refunded'
-         WHERE booking_id = ? AND payment_status = 'completed'`,
+      const [paymentRows] = await connection.query(
+        `SELECT id FROM payments WHERE booking_id = ? AND payment_status = 'completed' LIMIT 1`,
         [id]
       );
+
+      const refundRequired = paymentRows.length > 0;
+      const newStatus = 'cancelled';
+
+      let refundStatusUpdate = "";
+      if (refundRequired && booking.refund_status === 'not_required') {
+         refundStatusUpdate = ", refund_status = 'required', refund_requested_at = NOW()";
+      }
+
       await connection.query(
-        "UPDATE bookings SET booking_status = 'cancelled' WHERE id = ?",
-        [id]
+        `UPDATE bookings SET
+           booking_status = ?,
+           cancelled_at = NOW(),
+           cancelled_by_user_id = ?,
+           cancellation_reason = ?${refundStatusUpdate}
+         WHERE id = ?`,
+        [newStatus, actorUserId, isAdmin ? 'Cancelled by admin' : 'Cancelled by user', id]
       );
       await connection.commit();
-      return { refundedPayments: refundResult.affectedRows };
+      return { refundRequired, newStatus };
     } catch (error) {
       await connection.rollback();
       throw error;
@@ -236,11 +250,16 @@ const Booking = {
     }
   },
 
-  updateStatusAtomic: async (id, status) => {
+  updateStatusAtomic: async (id, status, metadata = {}) => {
     const allowedTransitions = {
-      pending: ["confirmed", "cancelled"],
-      confirmed: ["completed", "cancelled"],
-      cancelled: [],
+      pending: ["confirmed", "cancelled", "expired"],
+      confirmed: ["checked_in", "cancelled", "no_show", "refunded", "completed"],
+      checked_in: ["checked_out", "completed"],
+      checked_out: [],
+      cancelled: ["refunded"],
+      no_show: [],
+      expired: [],
+      refunded: [],
       completed: [],
     };
     const connection = await pool.getConnection();
@@ -248,7 +267,7 @@ const Booking = {
     try {
       await connection.beginTransaction();
       const [rows] = await connection.query(
-        "SELECT id, booking_status FROM bookings WHERE id = ? LIMIT 1 FOR UPDATE",
+        "SELECT id, booking_status, refund_status FROM bookings WHERE id = ? LIMIT 1 FOR UPDATE",
         [id]
       );
       const booking = rows[0];
@@ -261,23 +280,40 @@ const Booking = {
         );
       }
 
-      let refundedPayments = 0;
+      let refundRequired = false;
+      let refundStatusUpdate = "";
       if (status === "cancelled") {
-        const [refundResult] = await connection.query(
-          `UPDATE payments
-           SET payment_status = 'refunded'
-           WHERE booking_id = ? AND payment_status = 'completed'`,
+        const [paymentRows] = await connection.query(
+          `SELECT id FROM payments WHERE booking_id = ? AND payment_status = 'completed' LIMIT 1`,
           [id]
         );
-        refundedPayments = refundResult.affectedRows;
+        refundRequired = paymentRows.length > 0;
+        if (refundRequired && booking.refund_status === 'not_required') {
+          refundStatusUpdate = ", refund_status = 'required', refund_requested_at = NOW()";
+        }
       }
 
-      await connection.query(
-        "UPDATE bookings SET booking_status = ? WHERE id = ?",
-        [status, id]
-      );
+      let updateQuery = "UPDATE bookings SET booking_status = ?";
+      const updateParams = [status];
+
+      if (status === "checked_in") {
+        updateQuery += ", checked_in_at = NOW()";
+      } else if (status === "checked_out" || status === "completed") {
+        updateQuery += ", checked_out_at = NOW()";
+      } else if (status === "no_show") {
+        updateQuery += ", no_show_at = NOW()";
+      } else if (status === "cancelled" || status === "refunded") {
+        updateQuery += ", cancelled_at = NOW(), cancellation_reason = ?, cancelled_by_user_id = ?";
+        if (status === "cancelled") updateQuery += refundStatusUpdate;
+        updateParams.push(metadata.reason || null, metadata.actorUserId || null);
+      }
+
+      updateQuery += " WHERE id = ?";
+      updateParams.push(id);
+
+      await connection.query(updateQuery, updateParams);
       await connection.commit();
-      return { refundedPayments };
+      return { refundRequired, newStatus: status };
     } catch (error) {
       await connection.rollback();
       throw error;
@@ -288,21 +324,31 @@ const Booking = {
 
   isRoomAvailable: async (roomId, checkIn, checkOut) => {
     const [rooms] = await pool.query(
-      "SELECT availability_status FROM rooms WHERE id = ? LIMIT 1",
+      "SELECT availability_status, is_archived FROM rooms WHERE id = ? LIMIT 1",
       [roomId]
     );
-    if (!rooms[0] || rooms[0].availability_status !== "available") return false;
+    if (!rooms[0] || rooms[0].availability_status !== "available" || rooms[0].is_archived) return false;
 
     const [rows] = await pool.query(
       `SELECT COUNT(*) AS overlapCount
        FROM bookings
        WHERE room_id = ?
-         AND booking_status NOT IN ('cancelled', 'completed')
+         AND booking_status NOT IN ('cancelled', 'expired', 'refunded', 'checked_out', 'completed')
+         AND (booking_status != 'pending' OR expires_at IS NULL OR expires_at > NOW())
          AND check_in < ?
          AND check_out > ?`,
       [roomId, checkOut, checkIn]
     );
     return Number(rows[0].overlapCount) === 0;
+  },
+
+  expirePendingBookings: async () => {
+    const [result] = await pool.query(
+      `UPDATE bookings
+       SET booking_status = 'expired'
+       WHERE booking_status = 'pending' AND expires_at <= NOW()`
+    );
+    return result.affectedRows;
   },
 
   hasCompletedStay: async (userId, hotelId) => {

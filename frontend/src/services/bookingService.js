@@ -15,7 +15,7 @@ export const checkoutBooking = async (bookingData) => {
   return response;
 };
 
-export const cancelBooking = async (id) => {
-  const response = await api.put(`/bookings/${id}/cancel`);
+export const cancelBooking = async (id, reason) => {
+  const response = await api.put(`/bookings/${id}/cancel`, { reason });
   return response;
 };
