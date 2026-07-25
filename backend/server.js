@@ -13,7 +13,7 @@ const verifyDBConnection = async () => {
     console.log(`MySQL connected: ${process.env.DB_HOST || "localhost"}/${process.env.DB_NAME || "hotel_booking_db"}`);
     return true;
   } catch (error) {
-    throw new Error(`MySQL is currently unavailable: ${error.message}`);
+    throw new Error("MySQL is currently unavailable");
   }
 };
 
