@@ -57,7 +57,7 @@ const Favorites = () => {
                     height: '200px', 
                     borderTopLeftRadius: '1rem', 
                     borderTopRightRadius: '1rem',
-                    backgroundImage: `url(${fav.image_url || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80'})`,
+                    backgroundImage: `url(${fav.image_url || '/images/default-hotel.svg'})`,
                     backgroundSize: 'cover',
                     backgroundPosition: 'center'
                   }}

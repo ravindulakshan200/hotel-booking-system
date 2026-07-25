@@ -5,14 +5,7 @@ import { formatCurrency } from '../utils/formatters';
 
 const SL_CITIES = ['Colombo', 'Kandy', 'Galle', 'Ella', 'Nuwara Eliya', 'Bentota', 'Mirissa', 'Sigiriya', 'Negombo', 'Anuradhapura'];
 
-const HOTEL_IMAGES = [
-  'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80',
-  'https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?auto=format&fit=crop&w=800&q=80',
-  'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=800&q=80',
-  'https://images.unsplash.com/photo-1551882547-ff40c0d5b5df?auto=format&fit=crop&w=800&q=80',
-  'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=800&q=80',
-  'https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=800&q=80',
-];
+const DEFAULT_HOTEL_IMAGE = '/images/default-hotel.svg';
 
 const Hotels = () => {
   const [hotels, setHotels] = useState([]);
@@ -120,7 +113,7 @@ const Hotels = () => {
 
   return (
     <div className="page-wrapper fade-in" style={{ backgroundColor: 'var(--color-bg)' }}>
-      <div className="py-4 position-relative" style={{ backgroundImage: 'linear-gradient(to right, rgba(11,34,57,0.92), rgba(26,66,110,0.75)), url(https://images.unsplash.com/photo-1578662996442-48f60103fc96?auto=format&fit=crop&w=2000&q=80)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
+      <div className="py-4 position-relative" style={{ backgroundImage: 'linear-gradient(to right, rgba(11,34,57,0.92), rgba(26,66,110,0.75))', backgroundSize: 'cover', backgroundPosition: 'center' }}>
         <div className="container py-2 text-center position-relative">
           <h1 className="font-serif fw-bold display-5 mb-3 text-white">Find Your Perfect Stay</h1>
 
@@ -244,7 +237,7 @@ const Hotels = () => {
                 <div className="d-flex flex-column gap-4">
                     {hotels.map((hotel, index) => (
                     <div key={hotel.id} className="modern-card hover-lift p-0 d-flex flex-column flex-md-row slide-up overflow-hidden" style={{ animationDelay: `${(index % 9) * 60}ms` }}>
-                        <div className="bg-light position-relative" style={{ width: '100%', minHeight: '250px', backgroundImage: `url(${hotel.image_url || HOTEL_IMAGES[index % HOTEL_IMAGES.length]})`, backgroundSize: 'cover', backgroundPosition: 'center', flexBasis: '35%' }}>
+                        <div className="bg-light position-relative" style={{ width: '100%', minHeight: '250px', backgroundImage: `url(${hotel.image_url || DEFAULT_HOTEL_IMAGE})`, backgroundSize: 'cover', backgroundPosition: 'center', flexBasis: '35%' }}>
                             {hotel.star_rating && <span className="position-absolute top-0 end-0 m-3 badge bg-primary text-white" style={{ fontSize: '0.9rem', padding: '0.5rem 0.8rem' }}>★ {hotel.star_rating}.0</span>}
                         </div>
                         <div className="p-4 d-flex flex-column bg-white flex-grow-1" style={{ flexBasis: '65%' }}>

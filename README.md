@@ -170,6 +170,14 @@ The following checks were verified in the current workspace:
 - Frontend production build: `cd frontend && npm run build`
 - Readiness: `/api/v1/health` checks MySQL; liveness: `/api/v1/health/live`
 
+### Create a clean archive
+
+To create a clean `.zip` archive of the project (excluding `node_modules`, `.env`, and other ignored files):
+
+```bash
+node scripts/archive.js
+```
+
 ---
 
 ## 👤 Author

@@ -7,7 +7,7 @@ const Payment = require("../models/Payment");
 const Booking = require("../models/Booking");
 const getStripeSecret = () => {
   if (process.env.STRIPE_SECRET_KEY) return process.env.STRIPE_SECRET_KEY;
-  if (process.env.NODE_ENV !== "production") return "sk_test_mock_key";
+  if (process.env.NODE_ENV === "test") return "sk_test_mock_key";
   if (process.env.STRIPE_PAYMENTS_ENABLED !== "true") return "disabled_dummy_key";
   return undefined; // Will naturally throw in stripe module
 };
@@ -19,9 +19,10 @@ const VALID_STATUSES = ["pending", "completed", "refunded", "failed"];
 const getConfig = (req, res, next) => {
   try {
     const stripeEnabled = process.env.STRIPE_PAYMENTS_ENABLED === "true";
+    const demoPaymentsEnabled = process.env.DEMO_PAYMENTS_ENABLED === "true";
     res.status(200).json({
       success: true,
-      data: { stripeEnabled },
+      data: { stripeEnabled, demoPaymentsEnabled },
     });
   } catch (error) {
     next(error);
