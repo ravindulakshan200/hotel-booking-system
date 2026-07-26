@@ -320,6 +320,33 @@ const handleStripeWebhook = async (req, res, next) => {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
       await finalizeStripePayment(session);
+    } else if (event.type === "checkout.session.expired") {
+      const session = event.data.object;
+      const bookingId = Number(session.metadata?.booking_id);
+      if (bookingId) {
+        const Booking = require("../models/Booking");
+        await Booking.expireBookingById(bookingId);
+      }
+    } else if (event.type === "charge.refunded") {
+      const charge = event.data.object;
+      const paymentIntent = charge.payment_intent;
+      if (paymentIntent) {
+        const pool = require("../config/db");
+        const [payments] = await pool.query(
+          "SELECT booking_id FROM payments WHERE transaction_reference = ? LIMIT 1",
+          [paymentIntent]
+        );
+        const payment = payments[0];
+        if (payment) {
+          const Booking = require("../models/Booking");
+          const refundId = charge.refunds?.data?.[0]?.id || "UNKNOWN_REFUND_ID";
+          await Booking.updateRefundAtomic(payment.booking_id, {
+            refundStatus: 'completed',
+            providerRef: refundId,
+            reason: 'Stripe Webhook Refund Confirmation'
+          });
+        }
+      }
     }
     // Return a safe 200 response to acknowledge receipt
     res.status(200).json({ received: true });

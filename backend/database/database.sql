@@ -161,6 +161,35 @@ CREATE TABLE IF NOT EXISTS rooms (
 
 
 -- =============================================================================
+-- =============================================================================
+-- TABLE: promo_codes
+-- =============================================================================
+-- Stores promo codes for booking discounts.
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS promo_codes (
+  id INT NOT NULL AUTO_INCREMENT,
+  code VARCHAR(50) NOT NULL,
+  discount_type ENUM('fixed', 'percentage') NOT NULL,
+  discount_value DECIMAL(10,2) NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  usage_limit INT NOT NULL DEFAULT 0 COMMENT '0 means unlimited',
+  times_used INT NOT NULL DEFAULT 0,
+  times_reserved INT NOT NULL DEFAULT 0,
+  min_booking_value DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  description VARCHAR(255) DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_promo_codes_code (code),
+  INDEX idx_promo_codes_active_dates (is_active, start_date, end_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- =============================================================================
 -- TABLE: bookings
 -- =============================================================================
 -- Records a reservation of a room by a user for a date range.
@@ -201,6 +230,17 @@ CREATE TABLE IF NOT EXISTS bookings (
                     COMMENT 'not_required, required, processing, completed, failed',
   refund_requested_at TIMESTAMP   NULL DEFAULT NULL,
   refund_completed_at TIMESTAMP   NULL DEFAULT NULL,
+  promo_code_id         INT             NULL DEFAULT NULL COMMENT 'FK → promo_codes.id',
+  promo_reserved        BOOLEAN         NOT NULL DEFAULT FALSE,
+  original_amount       DECIMAL(10,2)   NULL DEFAULT NULL,
+  discount_amount       DECIMAL(10,2)   NULL DEFAULT NULL,
+  final_amount          DECIMAL(10,2)   NULL DEFAULT NULL,
+  refund_provider_reference VARCHAR(255) NULL DEFAULT NULL,
+  refund_reason         VARCHAR(255)    NULL DEFAULT NULL,
+  refund_admin_notes    TEXT            NULL DEFAULT NULL,
+  refund_processing_at  TIMESTAMP       NULL DEFAULT NULL,
+  refund_rejected_at    TIMESTAMP       NULL DEFAULT NULL,
+  refund_failed_at      TIMESTAMP       NULL DEFAULT NULL,
   created_at      TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at      TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP
                                            ON UPDATE CURRENT_TIMESTAMP,
@@ -233,6 +273,13 @@ CREATE TABLE IF NOT EXISTS bookings (
   CONSTRAINT fk_bookings_cancelled_by
     FOREIGN KEY (cancelled_by_user_id)
     REFERENCES users (id)
+    ON DELETE SET NULL
+    ON UPDATE CASCADE,
+
+  -- Foreign key: promo code applied
+  CONSTRAINT fk_bookings_promo_code
+    FOREIGN KEY (promo_code_id)
+    REFERENCES promo_codes (id)
     ON DELETE SET NULL
     ON UPDATE CASCADE,
 
@@ -276,6 +323,9 @@ CREATE TABLE IF NOT EXISTS payments (
                         )               NOT NULL DEFAULT 'pending',
   transaction_reference VARCHAR(255)    DEFAULT NULL
                           COMMENT 'External payment gateway reference ID',
+  original_amount       DECIMAL(10,2)   NULL DEFAULT NULL,
+  discount_amount       DECIMAL(10,2)   NULL DEFAULT NULL,
+  final_amount          DECIMAL(10,2)   NULL DEFAULT NULL,
   created_at            TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
   -- Constraints

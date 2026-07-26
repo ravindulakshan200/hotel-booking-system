@@ -13,7 +13,8 @@ const {
   deleteUser,
   updateBookingStatus,
   getEmailStats,
-  retryEmail
+  retryEmail,
+  updateBookingRefund,
 } = require("../controllers/adminController");
 
 const { protect }    = require("../middleware/authMiddleware");
@@ -37,6 +38,7 @@ router.get("/hotels",         getAllHotelsAdmin);
 
 // Booking status management (admin override)
 router.patch("/bookings/:id/status", updateBookingStatus);
+router.patch("/bookings/:id/refund", updateBookingRefund);
 
 // Cleanup expired bookings manually (admin)
 const { cleanupExpiredBookings } = require("../controllers/bookingController");

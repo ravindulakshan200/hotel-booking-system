@@ -86,6 +86,11 @@ export const cleanupExpiredBookings = async () => {
   return response;
 };
 
+export const updateBookingRefund = async (id, data) => {
+  const response = await api.patch(`/admin/bookings/${id}/refund`, data);
+  return response;
+};
+
 export const getAllReviewsAdmin = async () => {
   const response = await api.get('/reviews');
   return response;

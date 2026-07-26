@@ -17,6 +17,7 @@ const paymentRoutes = require("./routes/paymentRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const favoriteRoutes = require("./routes/favoriteRoutes");
+const promoRoutes = require("./routes/promoRoutes");
 
 const createApp = () => {
   const app = express();
@@ -61,6 +62,7 @@ const createApp = () => {
   app.use("/api/v1/admin", adminRoutes);
   app.use("/api/v1/reviews", reviewRoutes);
   app.use("/api/v1/favorites", favoriteRoutes);
+  app.use("/api/v1/promos", promoRoutes);
 
   app.use(notFound);
   app.use(errorHandler);

@@ -9,7 +9,15 @@ const Booking = require("../models/Booking");
 const Hotel = require("../models/Hotel");
 const EmailOutbox = require("../models/EmailOutbox");
 
-// â”€â”€â”€ DASHBOARD STATS & ANALYTICS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const getStripeSecret = () => {
+  if (process.env.STRIPE_SECRET_KEY) return process.env.STRIPE_SECRET_KEY;
+  if (process.env.NODE_ENV === "test") return "sk_test_mock_key";
+  if (process.env.STRIPE_PAYMENTS_ENABLED !== "true") return "disabled_dummy_key";
+  return undefined;
+};
+const stripe = require("stripe")(getStripeSecret());
+
+// ——————————————————————————————————————————————————————————————————————————————
 
 const getPeriodDates = (period) => {
   const now = new Date();
@@ -323,6 +331,109 @@ const retryEmail = async (req, res, next) => {
   }
 };
 
+const updateBookingRefund = async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id) || id < 1) {
+      return res.status(400).json({ success: false, message: "Invalid booking ID." });
+    }
+
+    const { refund_status, refund_reason, refund_admin_notes } = req.body;
+    if (!refund_status) {
+      return res.status(400).json({ success: false, message: "refund_status is required." });
+    }
+
+    const booking = await Booking.findById(id);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: "Booking not found." });
+    }
+
+    // Find the linked completed payment
+    const [payments] = await pool.query(
+      "SELECT * FROM payments WHERE booking_id = ? AND payment_status = 'completed' LIMIT 1",
+      [id]
+    );
+    const payment = payments[0];
+
+    // Determine if it is a Stripe payment
+    const isStripe = payment &&
+      (payment.payment_method === 'card' || payment.payment_method === 'online') &&
+      payment.transaction_reference &&
+      !payment.transaction_reference.startsWith('DEMO-');
+
+    if (isStripe) {
+      if (refund_status === 'completed') {
+        return res.status(400).json({ success: false, message: "Cannot manually complete Stripe refunds. These must be processed via Stripe." });
+      }
+      if (refund_status === 'rejected') {
+        return res.status(400).json({ success: false, message: "Stripe refunds cannot be manually rejected." });
+      }
+
+      if (refund_status === 'processing') {
+        // Call Stripe refund API
+        try {
+          const stripeRefund = await stripe.refunds.create({
+            payment_intent: payment.transaction_reference
+          });
+
+          // Stripe refund status can be succeeded, pending, failed, or cancelled
+          const nextStatus = stripeRefund.status === 'succeeded' ? 'completed' : 'processing';
+
+          await Booking.updateRefundAtomic(id, {
+            refundStatus: nextStatus,
+            providerRef: stripeRefund.id,
+            reason: refund_reason || 'Stripe Refund Request',
+            adminNotes: refund_admin_notes
+          });
+        } catch (stripeError) {
+          if (stripeError.message && stripeError.message.includes("already been refunded")) {
+            const stripeRefunds = await stripe.refunds.list({ payment_intent: payment.transaction_reference });
+            const refundId = stripeRefunds.data[0]?.id || "ALREADY_REFUNDED";
+            await Booking.updateRefundAtomic(id, {
+              refundStatus: 'completed',
+              providerRef: refundId,
+              reason: refund_reason || 'Stripe Refund (Already Refunded)',
+              adminNotes: refund_admin_notes
+            });
+          } else {
+            await Booking.updateRefundAtomic(id, {
+              refundStatus: 'failed',
+              reason: stripeError.message,
+              adminNotes: refund_admin_notes
+            });
+            return res.status(400).json({ success: false, message: `Stripe Refund API error: ${stripeError.message}` });
+          }
+        }
+      } else {
+        await Booking.updateRefundAtomic(id, {
+          refundStatus: refund_status,
+          reason: refund_reason,
+          adminNotes: refund_admin_notes
+        });
+      }
+    } else {
+      // Manual / non-Stripe payments
+      console.log(`[AUDIT LOG] Admin (ID: ${req.user.id}) manually changed refund status for booking ID: ${id} to ${refund_status}. Notes: ${refund_admin_notes || 'N/A'}`);
+
+      await Booking.updateRefundAtomic(id, {
+        refundStatus: refund_status,
+        providerRef: req.body.refund_provider_reference !== undefined ? req.body.refund_provider_reference : 'MANUAL-REFUND',
+        reason: refund_reason || 'Manual/Demo Refund',
+        adminNotes: refund_admin_notes
+      });
+    }
+
+    const updated = await Booking.findById(id);
+    return res.status(200).json({
+      success: true,
+      message: `Booking refund status updated to '${refund_status}'.`,
+      data: { booking: updated }
+    });
+  } catch (error) {
+    console.error(error); next(error);
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getAllUsers,
@@ -331,4 +442,5 @@ module.exports = {
   updateBookingStatus,
   getEmailStats,
   retryEmail,
+  updateBookingRefund,
 };

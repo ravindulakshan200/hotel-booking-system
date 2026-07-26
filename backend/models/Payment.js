@@ -82,7 +82,7 @@ const Payment = {
     try {
       await connection.beginTransaction();
       const [bookings] = await connection.query(
-        `SELECT id, user_id, total_price, booking_status
+        `SELECT id, user_id, total_price, booking_status, promo_code_id, promo_reserved, original_amount, discount_amount, final_amount
          FROM bookings
          WHERE id = ?
          LIMIT 1
@@ -112,12 +112,30 @@ const Payment = {
       const txRef = transactionReference || `DEMO-${Date.now()}-${bookingId}`;
       const [result] = await connection.query(
         `INSERT INTO payments
-           (booking_id, payment_method, amount, payment_status, transaction_reference)
-         VALUES (?, ?, ?, 'completed', ?)`,
-        [bookingId, paymentMethod, booking.total_price, txRef]
+           (booking_id, payment_method, amount, payment_status, transaction_reference, original_amount, discount_amount, final_amount)
+         VALUES (?, ?, ?, 'completed', ?, ?, ?, ?)`,
+        [
+          bookingId,
+          paymentMethod,
+          booking.total_price,
+          txRef,
+          booking.original_amount !== null ? booking.original_amount : booking.total_price,
+          booking.discount_amount !== null ? booking.discount_amount : 0.00,
+          booking.final_amount !== null ? booking.final_amount : booking.total_price
+        ]
       );
+
+      if (booking.promo_code_id) {
+        const PromoCode = require("./PromoCode");
+        if (booking.promo_reserved) {
+          await PromoCode.confirmUsage(connection, booking.promo_code_id);
+        } else {
+          await PromoCode.incrementUsage(connection, booking.promo_code_id);
+        }
+      }
+
       await connection.query(
-        "UPDATE bookings SET booking_status = 'confirmed' WHERE id = ?",
+        "UPDATE bookings SET booking_status = 'confirmed', promo_reserved = FALSE WHERE id = ?",
         [bookingId]
       );
 
