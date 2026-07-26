@@ -26,6 +26,7 @@ class EmailWorker {
 
     // Start the loop
     this.intervalId = setInterval(() => this.processBatch(), this.intervalMs);
+    this.intervalId.unref();
 
     // Initial clean up of stale locks
     EmailOutbox.releaseStaleLocks(5).catch(err => console.error("[EmailWorker] Stale lock release error:", err.message));

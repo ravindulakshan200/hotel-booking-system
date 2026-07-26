@@ -66,6 +66,7 @@ class ReminderWorker {
         console.error('[ReminderWorker] Interval batch error:', err.message)
       );
     }, this.intervalMs);
+    this.intervalId.unref();
   }
 
   /**

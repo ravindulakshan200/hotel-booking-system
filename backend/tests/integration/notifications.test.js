@@ -36,6 +36,7 @@ test("Notifications Integration", async (t) => {
 
   t.after(async () => {
     await pool.query("DELETE FROM users WHERE email = 'notifuser@example.com'");
+    await pool.end();
   });
 
   await t.test("should get paginated notifications for the user", async () => {
