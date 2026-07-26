@@ -8,10 +8,16 @@ const { run: runMigrations } = require('../../scripts/apply-migrations');
 test("Migration Runner Tests", async (t) => {
   const tempMigrationsDir = path.join(__dirname, '..', '..', 'database', 'temp_migrations_test');
 
-  test.before(() => {
+  test.before(async () => {
     if (!fs.existsSync(tempMigrationsDir)) {
       fs.mkdirSync(tempMigrationsDir, { recursive: true });
     }
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        migration_name VARCHAR(255) NOT NULL PRIMARY KEY,
+        applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
   });
 
   test.after(async () => {
