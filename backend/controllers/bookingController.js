@@ -23,8 +23,12 @@ const createBooking = async (req, res, next) => {
       room_id: Number(req.body.room_id),
       check_in: req.body.check_in,
       check_out: req.body.check_out,
+      promo_code: req.body.promo_code,
     });
     const booking = await Booking.findById(bookingId);
+    if (booking && req.user.role !== "admin") {
+      delete booking.refund_admin_notes;
+    }
 
     return res.status(201).json({
       success: true,
@@ -43,7 +47,7 @@ const checkoutBooking = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Validation failed.", errors });
     }
 
-    const { payment_method } = req.body;
+    const { payment_method, promo_code } = req.body;
     if (!VALID_PAYMENT_METHODS.includes(payment_method)) {
       return res.status(400).json({
         success: false,
@@ -57,11 +61,15 @@ const checkoutBooking = async (req, res, next) => {
       check_in: req.body.check_in,
       check_out: req.body.check_out,
       payment_method,
+      promo_code,
     });
     const [booking, payment] = await Promise.all([
       Booking.findById(result.bookingId),
       Payment.findById(result.paymentId),
     ]);
+    if (booking && req.user.role !== "admin") {
+      delete booking.refund_admin_notes;
+    }
 
     return res.status(201).json({
       success: true,
@@ -76,6 +84,11 @@ const checkoutBooking = async (req, res, next) => {
 const getMyBookings = async (req, res, next) => {
   try {
     const bookings = await Booking.findByUserId(req.user.id);
+    if (req.user.role !== "admin") {
+      bookings.forEach(b => {
+        delete b.refund_admin_notes;
+      });
+    }
     return res.status(200).json({
       success: true,
       message: bookings.length > 0 ? "Bookings fetched successfully." : "No bookings found.",
@@ -98,6 +111,9 @@ const getBookingById = async (req, res, next) => {
         success: false,
         message: "Access denied. You do not own this booking.",
       });
+    }
+    if (booking && req.user.role !== "admin") {
+      delete booking.refund_admin_notes;
     }
 
     return res.status(200).json({

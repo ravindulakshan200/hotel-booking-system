@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router';
 import { checkoutBooking, createBooking } from '../services/bookingService';
 import { createCheckoutSession, getPaymentConfig } from '../services/paymentService';
+import { validatePromoCode } from '../services/promoService';
 import { formatCurrency } from '../utils/formatters';
 import { getLocalDateInputValue } from '../utils/dates';
 
@@ -18,6 +19,11 @@ const Booking = () => {
   const [totalPrice, setTotalPrice] = useState(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const [promoCode, setPromoCode] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState(null);
+  const [promoError, setPromoError] = useState('');
+  const [promoSuccess, setPromoSuccess] = useState('');
   const today = getLocalDateInputValue();
 
   useEffect(() => {
@@ -71,6 +77,35 @@ const Booking = () => {
     }
   }, [checkIn, checkOut, room]);
 
+  useEffect(() => {
+    if (appliedPromo) {
+      setAppliedPromo(null);
+      setPromoSuccess('');
+      setPromoError('Dates changed. Please re-apply promo code.');
+    }
+  }, [totalPrice]);
+
+  const handleApplyPromo = async () => {
+    setPromoError('');
+    setPromoSuccess('');
+    try {
+      const res = await validatePromoCode(promoCode, totalPrice);
+      const data = res.data.data;
+      setAppliedPromo(data);
+      setPromoSuccess(`Promo code applied! Saved LKR ${data.discount_amount}`);
+    } catch (err) {
+      setPromoError(err.response?.data?.message || 'Failed to validate promo code.');
+      setAppliedPromo(null);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setAppliedPromo(null);
+    setPromoCode('');
+    setPromoSuccess('');
+    setPromoError('');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -88,6 +123,7 @@ const Booking = () => {
           room_id: room.id,
           check_in: checkIn,
           check_out: checkOut,
+          promo_code: appliedPromo ? appliedPromo.code : undefined
         });
         const bookingId = bookingRes.data.data.booking.id;
 
@@ -105,6 +141,7 @@ const Booking = () => {
           check_in: checkIn,
           check_out: checkOut,
           payment_method: paymentMethod,
+          promo_code: appliedPromo ? appliedPromo.code : undefined
         });
 
         navigate('/my-bookings', {
@@ -143,6 +180,47 @@ const Booking = () => {
                     <input type="date" className="form-control form-control-lg bg-light" required value={checkOut} min={checkIn || today} onChange={(e) => setCheckOut(e.target.value)} disabled={loading} />
                   </div>
                 </div>
+
+                {/* Promo Code Input */}
+                <h4 className="font-serif fw-bold text-primary mb-3 mt-5">Promo Code</h4>
+                <div className="row g-3 align-items-center mb-4">
+                  <div className="col-sm-8">
+                    <input
+                      type="text"
+                      className="form-control form-control-lg bg-light"
+                      placeholder="Enter promo code (e.g. SAVE10)"
+                      value={promoCode}
+                      onChange={(e) => {
+                        setPromoCode(e.target.value);
+                        setPromoError('');
+                        setPromoSuccess('');
+                      }}
+                      disabled={loading || !!appliedPromo}
+                    />
+                  </div>
+                  <div className="col-sm-4">
+                    {appliedPromo ? (
+                      <button
+                        type="button"
+                        className="btn btn-outline-danger btn-lg w-100 rounded-pill"
+                        onClick={handleRemovePromo}
+                      >
+                        Remove
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn-outline-primary btn-lg w-100 rounded-pill"
+                        onClick={handleApplyPromo}
+                        disabled={!promoCode.trim() || totalNights === 0}
+                      >
+                        Apply
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {promoError && <div className="text-danger mb-4 small"><i className="bi bi-exclamation-circle me-1"></i>{promoError}</div>}
+                {promoSuccess && <div className="text-success mb-4 small"><i className="bi bi-check-circle me-1"></i>{promoSuccess}</div>}
 
                 <h4 className="font-serif fw-bold text-primary mb-3 mt-5">
                   {demoPaymentsEnabled ? 'Demo Payment Method' : 'Payment Method'}
@@ -222,9 +300,24 @@ const Booking = () => {
                 <span className="fw-bold">{totalNights}</span>
               </div>
 
+              {appliedPromo && (
+                <>
+                  <div className="d-flex justify-content-between mb-2 fs-6 opacity-75">
+                    <span>Original Price</span>
+                    <span className="text-decoration-line-through">{formatCurrency(totalPrice)}</span>
+                  </div>
+                  <div className="d-flex justify-content-between mb-2 fs-6 text-warning">
+                    <span>Discount ({appliedPromo.code})</span>
+                    <span>-{formatCurrency(Number(appliedPromo.discount_amount))}</span>
+                  </div>
+                </>
+              )}
+
               <div className="d-flex justify-content-between align-items-center mt-3 pt-3 border-top border-light">
                 <span className="fs-5 opacity-90">Total Price</span>
-                <span className="fs-2 fw-bold text-accent font-serif">{formatCurrency(totalPrice)}</span>
+                <span className="fs-2 fw-bold text-accent font-serif">
+                  {formatCurrency(appliedPromo ? Number(appliedPromo.final_amount) : totalPrice)}
+                </span>
               </div>
             </div>
           </div>

@@ -1,7 +1,7 @@
 import React, { useEffect, useCallback, useState } from 'react';
 import AdminLayout from '../../layouts/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
-import { getAllBookings, updateBookingStatus, cleanupExpiredBookings } from '../../services/adminService';
+import { getAllBookings, updateBookingStatus, cleanupExpiredBookings, updateBookingRefund } from '../../services/adminService';
 import { formatCurrency } from '../../utils/formatters';
 
 const AdminBookings = () => {
@@ -11,6 +11,12 @@ const AdminBookings = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [actionMessage, setActionMessage] = useState('');
   const [updatingId, setUpdatingId] = useState(null);
+
+  // Refund tracking modal state
+  const [selectedRefundBooking, setSelectedRefundBooking] = useState(null);
+  const [refundStatus, setRefundStatus] = useState('');
+  const [refundRef, setRefundRef] = useState('');
+  const [refundNotes, setRefundNotes] = useState('');
 
   const fetchBookings = useCallback(async () => {
     try {
@@ -49,6 +55,23 @@ const AdminBookings = () => {
       await fetchBookings();
     } catch (err) {
       setActionMessage(err.response?.data?.message || 'Failed to clean up expired bookings.');
+    }
+  };
+
+  const handleRefundSubmit = async () => {
+    if (!selectedRefundBooking) return;
+    setActionMessage('');
+    try {
+      await updateBookingRefund(selectedRefundBooking.id, {
+        refund_status: refundStatus,
+        refund_provider_reference: refundRef,
+        refund_notes: refundNotes
+      });
+      setActionMessage('Refund status updated successfully.');
+      setSelectedRefundBooking(null);
+      await fetchBookings();
+    } catch (err) {
+      setActionMessage(err.response?.data?.message || 'Failed to update refund status.');
     }
   };
 
@@ -111,16 +134,96 @@ const AdminBookings = () => {
                         <option value="refunded">Refunded</option>
                         <option value="completed">Completed</option>
                       </select>
-                      {b.refund_status === 'required' && (
-                        <div className="badge bg-warning text-dark w-100 mt-1">
-                          <i className="bi bi-clock-history me-1"></i> Refund Pending
-                        </div>
+                      {b.refund_status && b.refund_status !== 'not_required' && (
+                        <button
+                          type="button"
+                          className={`badge border-0 w-100 mt-1 d-block py-2 text-capitalize text-wrap ${
+                            b.refund_status === 'required' ? 'bg-warning text-dark' :
+                            b.refund_status === 'processing' ? 'bg-info text-dark' :
+                            b.refund_status === 'completed' ? 'bg-success text-white' :
+                            b.refund_status === 'rejected' ? 'bg-secondary text-white' :
+                            'bg-danger text-white'
+                          }`}
+                          onClick={() => {
+                            setSelectedRefundBooking(b);
+                            setRefundStatus(b.refund_status);
+                            setRefundRef(b.refund_provider_reference || '');
+                            setRefundNotes(b.refund_notes || '');
+                          }}
+                        >
+                          <i className="bi bi-pencil-square me-1"></i>
+                          Refund: {b.refund_status}
+                        </button>
                       )}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+      {selectedRefundBooking && (
+        <div className="modal-backdrop fade show" style={{ zIndex: 1040, backgroundColor: 'rgba(0,0,0,0.5)', position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh' }}>
+          <div className="modal d-block" tabIndex="-1" style={{ zIndex: 1050, position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', overflowY: 'auto' }}>
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content premium-card border-0 p-4 shadow-lg text-dark">
+                <div className="modal-header border-0 pb-0">
+                  <h4 className="modal-title font-serif fw-bold text-primary">Update Refund Details</h4>
+                  <button type="button" className="btn-close" onClick={() => setSelectedRefundBooking(null)}></button>
+                </div>
+                <div className="modal-body py-4">
+                  {selectedRefundBooking.cancellation_reason && (
+                    <div className="mb-3 bg-light p-3 rounded">
+                      <label className="form-label fw-semibold mb-1 text-muted small">Customer Cancellation Reason</label>
+                      <p className="mb-0 text-dark small">{selectedRefundBooking.cancellation_reason}</p>
+                    </div>
+                  )}
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">Refund Status</label>
+                    <select
+                      className="form-select"
+                      value={refundStatus}
+                      onChange={(e) => setRefundStatus(e.target.value)}
+                    >
+                      <option value="required">Required / Pending</option>
+                      <option value="processing">Processing</option>
+                      <option value="completed">Completed</option>
+                      <option value="rejected">Rejected</option>
+                      <option value="failed">Failed</option>
+                    </select>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">Provider Reference</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. Stripe refund ID, re_12345"
+                      value={refundRef}
+                      onChange={(e) => setRefundRef(e.target.value)}
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">Admin Notes</label>
+                    <textarea
+                      className="form-control"
+                      rows="3"
+                      placeholder="Enter notes about this refund..."
+                      value={refundNotes}
+                      onChange={(e) => setRefundNotes(e.target.value)}
+                    ></textarea>
+                  </div>
+                </div>
+                <div className="modal-footer border-0 pt-0 d-flex justify-content-end gap-2">
+                  <button type="button" className="btn btn-outline-secondary rounded-pill px-4" onClick={() => setSelectedRefundBooking(null)}>
+                    Cancel
+                  </button>
+                  <button type="button" className="btn btn-primary rounded-pill px-4" onClick={handleRefundSubmit}>
+                    Save Changes
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

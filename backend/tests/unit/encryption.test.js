@@ -56,8 +56,11 @@ test("Encryption Utility Tests", async (t) => {
 
     const encrypted = encryptPayload(payload, eventKey);
     
-    // Modify ciphertext (from hex, modifying last char)
-    encrypted.ciphertext = encrypted.ciphertext.substring(0, encrypted.ciphertext.length - 1) + 'a';
+    // Modify ciphertext (guaranteeing change from original)
+    const originalText = encrypted.ciphertext;
+    const lastChar = originalText.substring(originalText.length - 1);
+    const replacementChar = lastChar === 'a' ? 'b' : 'a';
+    encrypted.ciphertext = originalText.substring(0, originalText.length - 1) + replacementChar;
 
     assert.throws(() => {
       decryptPayload(encrypted, eventKey);

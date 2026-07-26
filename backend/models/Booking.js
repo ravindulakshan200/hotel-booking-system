@@ -41,15 +41,21 @@ const assertNoOverlap = async (connection, roomId, checkIn, checkOut) => {
 
 const insertBooking = async (
   connection,
-  { userId, roomId, checkIn, checkOut, pricePerNight, status, expiresAt = null }
+  { userId, roomId, checkIn, checkOut, pricePerNight, status, expiresAt = null, promoCodeId = null, promoReserved = false, originalAmount = null, discountAmount = null, finalAmount = null }
 ) => {
   const nights = calculateNights(checkIn, checkOut);
-  const totalPrice = (Number(pricePerNight) * nights).toFixed(2);
+  const basePrice = Number(pricePerNight) * nights;
+
+  const orig = originalAmount !== null ? Number(originalAmount) : basePrice;
+  const disc = discountAmount !== null ? Number(discountAmount) : 0.00;
+  const fin = finalAmount !== null ? Number(finalAmount) : basePrice;
+
+  const totalPrice = fin.toFixed(2);
   const [result] = await connection.query(
     `INSERT INTO bookings
-       (user_id, room_id, check_in, check_out, total_price, booking_status, expires_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [userId, roomId, checkIn, checkOut, totalPrice, status, expiresAt]
+       (user_id, room_id, check_in, check_out, total_price, booking_status, expires_at, promo_code_id, promo_reserved, original_amount, discount_amount, final_amount)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [userId, roomId, checkIn, checkOut, totalPrice, status, expiresAt, promoCodeId, promoReserved ? 1 : 0, orig.toFixed(2), disc.toFixed(2), totalPrice]
   );
 
   return { bookingId: result.insertId, totalPrice };
@@ -138,12 +144,41 @@ const Booking = {
     return rows[0] || null;
   },
 
-  createWithAvailability: async ({ user_id, room_id, check_in, check_out }) => {
+  createWithAvailability: async ({ user_id, room_id, check_in, check_out, promo_code }) => {
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
       const room = await lockBookableRoom(connection, room_id);
       await assertNoOverlap(connection, room_id, check_in, check_out);
+
+      let promoCodeId = null;
+      let originalAmount = null;
+      let discountAmount = null;
+      let finalAmount = null;
+
+      if (promo_code) {
+        const PromoCode = require("./PromoCode");
+        const [promoRows] = await connection.query(
+          "SELECT * FROM promo_codes WHERE code = ? FOR UPDATE",
+          [promo_code]
+        );
+        const promo = promoRows[0];
+        if (!promo) {
+          throw new HttpError(404, "Promo code not found.");
+        }
+        const nights = calculateNights(check_in, check_out);
+        const basePrice = Number(room.price_per_night) * nights;
+        PromoCode.validateCode(promo, basePrice);
+        const calculation = PromoCode.calculateDiscount(promo, basePrice);
+        promoCodeId = promo.id;
+        originalAmount = calculation.original_amount;
+        discountAmount = calculation.discount_amount;
+        finalAmount = calculation.final_amount;
+
+        // Reserve slot atomically
+        await PromoCode.reserveUsage(connection, promoCodeId);
+      }
+
       const { bookingId } = await insertBooking(connection, {
         userId: user_id,
         roomId: room_id,
@@ -152,6 +187,11 @@ const Booking = {
         pricePerNight: room.price_per_night,
         status: "pending",
         expiresAt: new Date(Date.now() + 15 * 60000), // 15 mins
+        promoCodeId,
+        promoReserved: promoCodeId ? true : false,
+        originalAmount,
+        discountAmount,
+        finalAmount
       });
 
       try {
@@ -176,12 +216,37 @@ const Booking = {
     }
   },
 
-  checkoutDemo: async ({ user_id, room_id, check_in, check_out, payment_method }) => {
+  checkoutDemo: async ({ user_id, room_id, check_in, check_out, payment_method, promo_code }) => {
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
       const room = await lockBookableRoom(connection, room_id);
       await assertNoOverlap(connection, room_id, check_in, check_out);
+
+      let promoCodeId = null;
+      let originalAmount = null;
+      let discountAmount = null;
+      let finalAmount = null;
+
+      if (promo_code) {
+        const PromoCode = require("./PromoCode");
+        const [promoRows] = await connection.query(
+          "SELECT * FROM promo_codes WHERE code = ? FOR UPDATE",
+          [promo_code]
+        );
+        const promo = promoRows[0];
+        if (!promo) {
+          throw new HttpError(404, "Promo code not found.");
+        }
+        const nights = calculateNights(check_in, check_out);
+        const basePrice = Number(room.price_per_night) * nights;
+        PromoCode.validateCode(promo, basePrice);
+        const calculation = PromoCode.calculateDiscount(promo, basePrice);
+        promoCodeId = promo.id;
+        originalAmount = calculation.original_amount;
+        discountAmount = calculation.discount_amount;
+        finalAmount = calculation.final_amount;
+      }
 
       const { bookingId, totalPrice } = await insertBooking(connection, {
         userId: user_id,
@@ -190,14 +255,23 @@ const Booking = {
         checkOut: check_out,
         pricePerNight: room.price_per_night,
         status: "confirmed",
+        promoCodeId,
+        originalAmount,
+        discountAmount,
+        finalAmount
       });
+
+      if (promoCodeId) {
+        const PromoCode = require("./PromoCode");
+        await PromoCode.incrementUsage(connection, promoCodeId);
+      }
 
       const transactionReference = `DEMO-${Date.now()}-${randomUUID()}`;
       const [paymentResult] = await connection.query(
         `INSERT INTO payments
-           (booking_id, payment_method, amount, payment_status, transaction_reference)
-         VALUES (?, ?, ?, 'completed', ?)`,
-        [bookingId, payment_method, totalPrice, transactionReference]
+           (booking_id, payment_method, amount, payment_status, transaction_reference, original_amount, discount_amount, final_amount)
+         VALUES (?, ?, ?, 'completed', ?, ?, ?, ?)`,
+        [bookingId, payment_method, totalPrice, transactionReference, originalAmount || totalPrice, discountAmount || 0.00, finalAmount || totalPrice]
       );
 
       try {
@@ -226,8 +300,8 @@ const Booking = {
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
-      const [rows] = await connection.query(
-        "SELECT id, user_id, booking_status, refund_status FROM bookings WHERE id = ? LIMIT 1 FOR UPDATE",
+       const [rows] = await connection.query(
+        "SELECT id, user_id, booking_status, refund_status, promo_code_id, promo_reserved FROM bookings WHERE id = ? LIMIT 1 FOR UPDATE",
         [id]
       );
       const booking = rows[0];
@@ -256,12 +330,23 @@ const Booking = {
          refundStatusUpdate = ", refund_status = 'required', refund_requested_at = NOW()";
       }
 
+      // Release promo code reservation or usage
+      if (booking.promo_code_id) {
+        const PromoCode = require("./PromoCode");
+        if (booking.booking_status === "pending" && booking.promo_reserved) {
+          await PromoCode.releaseReservation(connection, booking.promo_code_id);
+        } else if (booking.booking_status === "confirmed") {
+          await PromoCode.releaseUsage(connection, booking.promo_code_id);
+        }
+      }
+
       await connection.query(
         `UPDATE bookings SET
            booking_status = ?,
            cancelled_at = NOW(),
            cancelled_by_user_id = ?,
-           cancellation_reason = ?${refundStatusUpdate}
+           cancellation_reason = ?,
+           promo_reserved = FALSE${refundStatusUpdate}
          WHERE id = ?`,
         [newStatus, actorUserId, isAdmin ? 'Cancelled by admin' : 'Cancelled by user', id]
       );
@@ -405,12 +490,74 @@ const Booking = {
   },
 
   expirePendingBookings: async () => {
-    const [result] = await pool.query(
-      `UPDATE bookings
-       SET booking_status = 'expired'
-       WHERE booking_status = 'pending' AND expires_at <= NOW()`
-    );
-    return result.affectedRows;
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      const [expiredBookings] = await connection.query(
+        `SELECT id, promo_code_id, promo_reserved FROM bookings
+         WHERE booking_status = 'pending' AND expires_at <= NOW()
+         FOR UPDATE`
+      );
+
+      if (expiredBookings.length === 0) {
+        await connection.commit();
+        return 0;
+      }
+
+      const bookingIds = expiredBookings.map(b => b.id);
+
+      const PromoCode = require("./PromoCode");
+      for (const booking of expiredBookings) {
+        if (booking.promo_code_id && booking.promo_reserved) {
+          await PromoCode.releaseReservation(connection, booking.promo_code_id);
+        }
+      }
+
+      await connection.query(
+        `UPDATE bookings
+         SET booking_status = 'expired', promo_reserved = FALSE
+         WHERE id IN (?)`,
+        [bookingIds]
+      );
+
+      await connection.commit();
+      return expiredBookings.length;
+    } catch (err) {
+      await connection.rollback();
+      throw err;
+    } finally {
+      connection.release();
+    }
+  },
+
+  expireBookingById: async (id) => {
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [rows] = await connection.query(
+        `SELECT id, promo_code_id, promo_reserved, booking_status FROM bookings
+         WHERE id = ? LIMIT 1 FOR UPDATE`,
+        [id]
+      );
+      const booking = rows[0];
+      if (booking && booking.booking_status === 'pending') {
+        const PromoCode = require("./PromoCode");
+        if (booking.promo_code_id && booking.promo_reserved) {
+          await PromoCode.releaseReservation(connection, booking.promo_code_id);
+        }
+        await connection.query(
+          "UPDATE bookings SET booking_status = 'expired', promo_reserved = FALSE WHERE id = ?",
+          [id]
+        );
+      }
+      await connection.commit();
+    } catch (err) {
+      await connection.rollback();
+      throw err;
+    } finally {
+      connection.release();
+    }
   },
 
   hasCompletedStay: async (userId, hotelId) => {
@@ -438,6 +585,104 @@ const Booking = {
       ORDER BY month ASC
     `);
     return rows;
+  },
+
+  updateRefundAtomic: async (id, { refundStatus, providerRef, reason, adminNotes }) => {
+    const allowedStatuses = ["not_required", "required", "processing", "completed", "rejected", "failed"];
+    if (!allowedStatuses.includes(refundStatus)) {
+      throw new HttpError(400, "Invalid refund status.");
+    }
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      const [rows] = await connection.query(
+        "SELECT id, booking_status, refund_status, user_id FROM bookings WHERE id = ? LIMIT 1 FOR UPDATE",
+        [id]
+      );
+      const booking = rows[0];
+      if (!booking) throw new HttpError(404, "Booking not found.");
+
+      const currentStatus = booking.refund_status;
+      if (currentStatus !== refundStatus) {
+        if (currentStatus === "completed") {
+          throw new HttpError(400, "Cannot change status of a completed refund.");
+        }
+        if (currentStatus === "rejected") {
+          throw new HttpError(400, "Cannot change status of a rejected refund.");
+        }
+        if (currentStatus === "not_required") {
+          throw new HttpError(400, "Refund is not required for this booking.");
+        }
+        if (refundStatus === "completed" && !providerRef && !booking.refund_provider_reference) {
+          throw new HttpError(400, "Provider reference is required to complete a refund.");
+        }
+      }
+
+      let updateQuery = "UPDATE bookings SET refund_status = ?";
+      const params = [refundStatus];
+
+      if (refundStatus === "processing") {
+        updateQuery += ", refund_processing_at = NOW()";
+      } else if (refundStatus === "completed") {
+        updateQuery += ", refund_completed_at = NOW()";
+        // Also update linked payment to refunded if completed
+        await connection.query(
+          "UPDATE payments SET payment_status = 'refunded' WHERE booking_id = ?",
+          [id]
+        );
+      } else if (refundStatus === "rejected") {
+        updateQuery += ", refund_rejected_at = NOW()";
+      } else if (refundStatus === "failed") {
+        updateQuery += ", refund_failed_at = NOW()";
+      }
+
+      if (providerRef !== undefined) {
+        updateQuery += ", refund_provider_reference = ?";
+        params.push(providerRef);
+      }
+      if (reason !== undefined) {
+        updateQuery += ", refund_reason = ?";
+        params.push(reason);
+      }
+      if (adminNotes !== undefined) {
+        updateQuery += ", refund_admin_notes = ?";
+        params.push(adminNotes);
+      }
+
+      updateQuery += " WHERE id = ?";
+      params.push(id);
+
+      await connection.query(updateQuery, params);
+
+      // Enqueue email outbox event
+      try {
+        const EmailOutbox = require("./EmailOutbox");
+        let eventType = null;
+        if (refundStatus === "processing") eventType = "refund_processing";
+        else if (refundStatus === "completed") eventType = "refund_completed";
+        else if (refundStatus === "rejected") eventType = "refund_rejected";
+        else if (refundStatus === "failed") eventType = "refund_failed";
+
+        if (eventType) {
+          await EmailOutbox.enqueueEmailEvent(connection, {
+            eventKey: `refund_${refundStatus}_${id}`,
+            eventType: eventType,
+            recipientUserId: booking.user_id,
+            payload: { bookingId: id }
+          });
+        }
+      } catch (err) {
+        console.error("Failed to enqueue email event for refund update:", err.message);
+      }
+
+      await connection.commit();
+    } catch (err) {
+      await connection.rollback();
+      throw err;
+    } finally {
+      connection.release();
+    }
   },
 };
 

@@ -108,9 +108,23 @@ const MyBookings = () => {
                             Expires: {new Date(booking.expires_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                           </div>
                         )}
-                        {booking.refund_status === 'required' && (
-                          <div className="text-warning fw-bold mt-1" style={{ fontSize: '0.75rem' }}>
-                            <i className="bi bi-clock-history me-1"></i> Refund pending
+                        {booking.refund_status && booking.refund_status !== 'not_required' && (
+                          <div className={`mt-1 fw-bold`} style={{ fontSize: '0.75rem' }}>
+                            {booking.refund_status === 'required' && (
+                              <span className="text-warning"><i className="bi bi-clock-history me-1"></i>Refund pending</span>
+                            )}
+                            {booking.refund_status === 'processing' && (
+                              <span className="text-info"><i className="bi bi-gear-wide-connected me-1"></i>Refund processing</span>
+                            )}
+                            {booking.refund_status === 'completed' && (
+                              <span className="text-success"><i className="bi bi-check-circle-fill me-1"></i>Refunded</span>
+                            )}
+                            {booking.refund_status === 'rejected' && (
+                              <span className="text-danger"><i className="bi bi-x-circle-fill me-1"></i>Refund rejected</span>
+                            )}
+                            {booking.refund_status === 'failed' && (
+                              <span className="text-danger"><i className="bi bi-exclamation-triangle-fill me-1"></i>Refund failed</span>
+                            )}
                           </div>
                         )}
                       </td>
