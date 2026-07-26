@@ -153,11 +153,88 @@ const buildEmailTemplate = (event) => {
       subject = `Refund Completed for Booking #${payload.bookingId}`;
       const bodyHtml = `
         <p>Dear ${safeName},</p>
-        <p>The refund for your cancelled booking #${payload.bookingId} has been successfully processed.</p>
+        <p>The refund for your cancelled booking #${escapeHtml(String(payload.bookingId))} has been successfully processed.</p>
         <p>Please allow a few business days for the funds to appear in your account.</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${frontendUrl}/my-bookings" style="background-color: #198754; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">View My Bookings</a>
+        </div>
       `;
-      const bodyText = `Dear ${safeName},\n\nThe refund for booking #${payload.bookingId} is completed.`;
+      const bodyText = `Dear ${safeName},\n\nThe refund for booking #${payload.bookingId} is completed. Please allow a few business days for funds to appear.`;
       const template = baseTemplate("Refund Completed", "#198754", bodyHtml, bodyText);
+      htmlContent = template.html;
+      textContent = template.text;
+      break;
+    }
+    case 'payment_received': {
+      subject = `Payment Confirmed for Booking #${escapeHtml(String(payload.bookingId))}`;
+      const bodyHtml = `
+        <p>Dear ${safeName},</p>
+        <p>We have received your payment. Your booking is now <strong>confirmed</strong>!</p>
+        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <h3 style="margin-top: 0; color: #198754;">Booking Confirmed ✓</h3>
+          <p><strong>Booking ID:</strong> #${escapeHtml(String(payload.bookingId))}</p>
+          ${payload.hotelName ? `<p><strong>Hotel:</strong> ${escapeHtml(String(payload.hotelName))}</p>` : ''}
+          ${payload.checkIn ? `<p><strong>Check-in:</strong> ${escapeHtml(String(payload.checkIn))}</p>` : ''}
+          ${payload.checkOut ? `<p><strong>Check-out:</strong> ${escapeHtml(String(payload.checkOut))}</p>` : ''}
+          ${payload.totalPrice ? `<p><strong>Amount Paid:</strong> LKR ${escapeHtml(String(payload.totalPrice))}</p>` : ''}
+        </div>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${frontendUrl}/my-bookings" style="background-color: #198754; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">View My Bookings</a>
+        </div>
+      `;
+      const bodyText = `Dear ${safeName},\n\nPayment confirmed for booking #${payload.bookingId}. View your bookings at: ${frontendUrl}/my-bookings`;
+      const template = baseTemplate("Payment Confirmed", "#198754", bodyHtml, bodyText);
+      htmlContent = template.html;
+      textContent = template.text;
+      break;
+    }
+    case 'refund_processing': {
+      subject = `Refund Processing for Booking #${escapeHtml(String(payload.bookingId))}`;
+      const bodyHtml = `
+        <p>Dear ${safeName},</p>
+        <p>Your refund for booking #${escapeHtml(String(payload.bookingId))} is currently being processed.</p>
+        <p>Depending on your payment method, this may take a few business days to reflect in your account.</p>
+        <p>If you have any questions, please contact our support team.</p>
+      `;
+      const bodyText = `Dear ${safeName},\n\nYour refund for booking #${payload.bookingId} is being processed. This may take a few business days.`;
+      const template = baseTemplate("Refund Processing", "#fd7e14", bodyHtml, bodyText);
+      htmlContent = template.html;
+      textContent = template.text;
+      break;
+    }
+    case 'refund_rejected': {
+      subject = `Refund Request Update for Booking #${escapeHtml(String(payload.bookingId))}`;
+      const bodyHtml = `
+        <p>Dear ${safeName},</p>
+        <p>We regret to inform you that the refund request for booking #${escapeHtml(String(payload.bookingId))} could not be approved at this time.</p>
+        <p>If you have any questions or would like to appeal this decision, please contact our support team.</p>
+      `;
+      const bodyText = `Dear ${safeName},\n\nYour refund request for booking #${payload.bookingId} has been rejected. Please contact support for more information.`;
+      const template = baseTemplate("Refund Request Update", "#dc3545", bodyHtml, bodyText);
+      htmlContent = template.html;
+      textContent = template.text;
+      break;
+    }
+    case 'checkin_reminder': {
+      subject = `Check-in Reminder: ${payload.hotelName ? escapeHtml(String(payload.hotelName)) : 'Your Stay'} Tomorrow`;
+      const bodyHtml = `
+        <p>Dear ${safeName},</p>
+        <p>This is a friendly reminder that your check-in is <strong>tomorrow</strong>!</p>
+        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <h3 style="margin-top: 0; color: #0d6efd;">Your Upcoming Stay</h3>
+          <p><strong>Booking ID:</strong> #${escapeHtml(String(payload.bookingId))}</p>
+          ${payload.hotelName ? `<p><strong>Hotel:</strong> ${escapeHtml(String(payload.hotelName))}</p>` : ''}
+          ${payload.roomType ? `<p><strong>Room Type:</strong> ${escapeHtml(String(payload.roomType))}</p>` : ''}
+          ${payload.checkIn ? `<p><strong>Check-in:</strong> ${escapeHtml(String(payload.checkIn))}</p>` : ''}
+          ${payload.checkOut ? `<p><strong>Check-out:</strong> ${escapeHtml(String(payload.checkOut))}</p>` : ''}
+        </div>
+        <p>We look forward to welcoming you. Please bring a valid ID for check-in.</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${frontendUrl}/my-bookings" style="background-color: #0d6efd; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">View Booking Details</a>
+        </div>
+      `;
+      const bodyText = `Dear ${safeName},\n\nReminder: Your check-in at ${payload.hotelName || 'the hotel'} is tomorrow (${payload.checkIn || 'scheduled date'}).\n\nBooking #${payload.bookingId}\n\nView details at: ${frontendUrl}/my-bookings`;
+      const template = baseTemplate("Check-in Reminder", "#0d6efd", bodyHtml, bodyText);
       htmlContent = template.html;
       textContent = template.text;
       break;
@@ -203,4 +280,5 @@ const processEmailEvent = async (event) => {
 
 module.exports = {
   processEmailEvent,
+  _buildEmailTemplate: buildEmailTemplate
 };

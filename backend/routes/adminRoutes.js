@@ -48,4 +48,7 @@ router.post("/bookings/cleanup-expired", cleanupExpiredBookings);
 router.get("/email/stats", getEmailStats);
 router.post("/email/retry/:id", retryEmail);
 
+const { triggerReminderCron } = require("../controllers/adminController");
+router.post("/cron/reminders", triggerReminderCron);
+
 module.exports = router;

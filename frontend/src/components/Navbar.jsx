@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router';
 import { useAuth } from '../context/AuthContext';
+import NotificationBell from './NotificationBell';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -98,6 +99,7 @@ const Navbar = () => {
                     {user.first_name} {user.last_name}
                   </span>
                 </li>
+                <NotificationBell />
                 <li className="nav-item">
                   <button className="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold" onClick={handleLogout}>
                     <i className="bi bi-box-arrow-right me-1"></i>Logout

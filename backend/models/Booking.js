@@ -206,6 +206,20 @@ const Booking = {
         console.error("Failed to enqueue email event (booking_created):", err.message);
       }
 
+      try {
+        const Notification = require("./Notification");
+        await Notification.create(connection, {
+          userId: user_id,
+          eventKey: `booking_created_${bookingId}`,
+          type: 'booking',
+          title: 'Booking Created',
+          message: `Booking #${bookingId} created. Complete your payment to confirm the reservation.`,
+          metadata: { bookingId }
+        });
+      } catch (err) {
+        console.error("Failed to create in-app notification (booking_created):", err.message);
+      }
+
       await connection.commit();
       return bookingId;
     } catch (error) {
@@ -286,6 +300,20 @@ const Booking = {
         console.error("Failed to enqueue email event (booking_confirmed):", err.message);
       }
 
+      try {
+        const Notification = require("./Notification");
+        await Notification.create(connection, {
+          userId: user_id,
+          eventKey: `booking_confirmed_${bookingId}`,
+          type: 'payment',
+          title: 'Booking Confirmed',
+          message: `Booking #${bookingId} is confirmed. Your demo payment has been received. Enjoy your stay!`,
+          metadata: { bookingId }
+        });
+      } catch (err) {
+        console.error("Failed to create in-app notification (booking_confirmed checkout):", err.message);
+      }
+
       await connection.commit();
       return { bookingId, paymentId: paymentResult.insertId };
     } catch (error) {
@@ -362,6 +390,23 @@ const Booking = {
         });
       } catch (err) {
         console.error(`Failed to enqueue email event for cancellation (refundRequired: ${refundRequired}):`, err.message);
+      }
+
+      try {
+        const Notification = require("./Notification");
+        const cancelKey = refundRequired ? `refund_required_${id}` : `booking_cancelled_${id}`;
+        await Notification.create(connection, {
+          userId: booking.user_id,
+          eventKey: cancelKey,
+          type: refundRequired ? 'refund' : 'booking',
+          title: refundRequired ? 'Refund Requested' : 'Booking Cancelled',
+          message: refundRequired
+            ? `Booking #${id} cancelled. A refund will be processed for your payment.`
+            : `Booking #${id} has been cancelled successfully.`,
+          metadata: { bookingId: id }
+        });
+      } catch (err) {
+        console.error(`Failed to create in-app notification for cancellation:`, err.message);
       }
 
       await connection.commit();
@@ -457,6 +502,34 @@ const Booking = {
         }
       } catch (err) {
         console.error(`Failed to enqueue email event for status transition to ${status}:`, err.message);
+      }
+
+      try {
+        const Notification = require("./Notification");
+        if (status === "cancelled") {
+          const cancelKey = refundRequired ? `refund_required_${id}` : `booking_cancelled_${id}`;
+          await Notification.create(connection, {
+            userId: booking.user_id,
+            eventKey: cancelKey,
+            type: refundRequired ? 'refund' : 'booking',
+            title: refundRequired ? 'Refund Requested' : 'Booking Cancelled',
+            message: refundRequired
+              ? `Booking #${id} cancelled. A refund will be processed.`
+              : `Booking #${id} has been cancelled.`,
+            metadata: { bookingId: id }
+          });
+        } else if (status === "confirmed") {
+          await Notification.create(connection, {
+            userId: booking.user_id,
+            eventKey: `booking_confirmed_${id}`,
+            type: 'booking',
+            title: 'Booking Confirmed',
+            message: `Booking #${id} has been confirmed.`,
+            metadata: { bookingId: id }
+          });
+        }
+      } catch (err) {
+        console.error(`Failed to create in-app notification for status transition to ${status}:`, err.message);
       }
 
       await connection.commit();

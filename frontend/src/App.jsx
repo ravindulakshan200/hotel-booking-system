@@ -20,6 +20,7 @@ import PaymentSuccess from './pages/PaymentSuccess';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import VerifyEmail from './pages/VerifyEmail';
+import Notifications from './pages/Notifications';
 
 // Lazy loaded Admin routes (optimization)
 const AdminDashboard = React.lazy(() => import('./pages/admin/AdminDashboard'));
@@ -117,6 +118,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <PaymentSuccess />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/notifications"
+                element={
+                  <ProtectedRoute>
+                    <Notifications />
                   </ProtectedRoute>
                 }
               />

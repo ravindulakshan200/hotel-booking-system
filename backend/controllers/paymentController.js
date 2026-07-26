@@ -345,6 +345,27 @@ const handleStripeWebhook = async (req, res, next) => {
             providerRef: refundId,
             reason: 'Stripe Webhook Refund Confirmation'
           });
+          // In-app notification for refund completion (INSERT IGNORE prevents duplicates
+          // if admin also marked it completed via the admin panel)
+          try {
+            const [[bk]] = await pool.query(
+              "SELECT user_id FROM bookings WHERE id = ? LIMIT 1",
+              [payment.booking_id]
+            );
+            if (bk) {
+              const Notification = require("../models/Notification");
+              await Notification.create(null, {
+                userId: bk.user_id,
+                eventKey: `refund_completed_${payment.booking_id}`,
+                type: 'refund',
+                title: 'Refund Completed',
+                message: `Your refund for booking #${payment.booking_id} has been processed successfully.`,
+                metadata: { bookingId: payment.booking_id }
+              });
+            }
+          } catch (notifErr) {
+            console.error("[Webhook] Failed to create refund_completed notification:", notifErr.message);
+          }
         }
       }
     }

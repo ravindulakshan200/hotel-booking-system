@@ -15,8 +15,8 @@ const makeConnection = ({ overlap = false } = {}) => {
     rollback: async () => calls.push("rollback"),
     release: () => calls.push("release"),
     query: async (sql, params) => {
-      // Ignore strict checks for outbox enqueuing during atomic booking transitions
-      if (sql.includes("INSERT IGNORE INTO email_outbox")) {
+      // Ignore strict checks for outbox/notification enqueuing during atomic booking transitions
+      if (sql.includes("INSERT IGNORE INTO email_outbox") || sql.includes("INSERT IGNORE INTO notifications")) {
         return [{ insertId: 999 }];
       }
       calls.push(sql.replace(/\s+/g, " ").trim());
@@ -99,7 +99,7 @@ test("admin status transition locks the booking and returns refundRequired for p
     rollback: async () => calls.push("rollback"),
     release: () => calls.push("release"),
     query: async (sql, params) => {
-      if (sql.includes("INSERT IGNORE INTO email_outbox")) {
+      if (sql.includes("INSERT IGNORE INTO email_outbox") || sql.includes("INSERT IGNORE INTO notifications")) {
         return [{ insertId: 999 }];
       }
       calls.push(sql.replace(/\s+/g, " ").trim());
@@ -131,7 +131,7 @@ test("cancellation of unpaid booking works and returns refundRequired: false", a
     rollback: async () => calls.push("rollback"),
     release: () => calls.push("release"),
     query: async (sql, params) => {
-      if (sql.includes("INSERT IGNORE INTO email_outbox")) {
+      if (sql.includes("INSERT IGNORE INTO email_outbox") || sql.includes("INSERT IGNORE INTO notifications")) {
         return [{ insertId: 999 }];
       }
       calls.push(sql.replace(/\s+/g, " ").trim());
@@ -163,7 +163,7 @@ test("duplicate cancellation does not overwrite existing refund request", async 
     rollback: async () => calls.push("rollback"),
     release: () => calls.push("release"),
     query: async (sql, params) => {
-      if (sql.includes("INSERT IGNORE INTO email_outbox")) {
+      if (sql.includes("INSERT IGNORE INTO email_outbox") || sql.includes("INSERT IGNORE INTO notifications")) {
         return [{ insertId: 999 }];
       }
       calls.push(sql.replace(/\s+/g, " ").trim());
@@ -192,7 +192,7 @@ test("booking creation commits successfully even if outbox enqueue fails", async
   // Override query to throw an error specifically for outbox insertion to simulate failure
   const originalQuery = connection.query;
   connection.query = async (sql, params) => {
-    if (sql.includes("INSERT IGNORE INTO email_outbox")) {
+    if (sql.includes("INSERT IGNORE INTO email_outbox") || sql.includes("INSERT IGNORE INTO notifications")) {
       throw new Error("Simulated encryption or outbox failure");
     }
     return originalQuery(sql, params);
