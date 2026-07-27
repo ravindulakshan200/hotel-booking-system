@@ -151,6 +151,20 @@ const Payment = {
         console.error("Failed to enqueue email event (booking_confirmed) in payment:", err.message);
       }
 
+      try {
+        const Notification = require("./Notification");
+        await Notification.create(connection, {
+          userId: booking.user_id,
+          eventKey: `payment_received_${bookingId}`,
+          type: 'payment',
+          title: 'Payment Received',
+          message: `Payment for booking #${bookingId} has been received. Your booking is now confirmed!`,
+          metadata: { bookingId }
+        });
+      } catch (err) {
+        console.error("Failed to create in-app notification (payment_received):", err.message);
+      }
+
       await connection.commit();
       return result.insertId;
     } catch (error) {

@@ -8,6 +8,7 @@ const User = require("../models/User");
 const Booking = require("../models/Booking");
 const Hotel = require("../models/Hotel");
 const EmailOutbox = require("../models/EmailOutbox");
+const Notification = require("../models/Notification");
 
 const getStripeSecret = () => {
   if (process.env.STRIPE_SECRET_KEY) return process.env.STRIPE_SECRET_KEY;
@@ -16,6 +17,72 @@ const getStripeSecret = () => {
   return undefined;
 };
 const stripe = require("stripe")(getStripeSecret());
+
+// ─── REFUND NOTIFICATION HELPER ───────────────────────────────────────────────
+
+/**
+ * Enqueue email + in-app notification for a refund status change.
+ * Both use INSERT IGNORE so concurrent calls are safe.
+ * Never logs the cron secret or any sensitive credential.
+ *
+ * @param {number} userId
+ * @param {number} bookingId
+ * @param {'processing'|'completed'|'rejected'|'failed'} status
+ */
+const enqueueRefundNotification = async (userId, bookingId, status) => {
+  const configs = {
+    processing: {
+      emailEventType: 'refund_processing',
+      notifTitle: 'Refund Processing',
+      notifMsg: `Your refund for booking #${bookingId} is being processed.`,
+    },
+    completed: {
+      emailEventType: 'refund_completed',
+      notifTitle: 'Refund Completed',
+      notifMsg: `Your refund for booking #${bookingId} has been completed.`,
+    },
+    rejected: {
+      emailEventType: 'refund_rejected',
+      notifTitle: 'Refund Rejected',
+      notifMsg: `Your refund request for booking #${bookingId} has been rejected. Please contact support.`,
+    },
+    failed: {
+      emailEventType: null, // Admin sees the 400 error; no email to avoid confusion
+      notifTitle: 'Refund Failed',
+      notifMsg: `The refund for booking #${bookingId} could not be processed. Please contact support.`,
+    },
+  };
+
+  const config = configs[status];
+  if (!config) return;
+
+  if (config.emailEventType) {
+    try {
+      await EmailOutbox.enqueueEmailEvent(null, {
+        eventKey: `${config.emailEventType}_${bookingId}`,
+        eventType: config.emailEventType,
+        recipientUserId: userId,
+        payload: { bookingId }
+      });
+    } catch (err) {
+      console.error(`[Admin] Failed to enqueue ${config.emailEventType} email:`, err.message);
+    }
+  }
+
+  try {
+    await Notification.create(null, {
+      userId,
+      eventKey: `refund_${status}_${bookingId}`,
+      type: 'refund',
+      title: config.notifTitle,
+      message: config.notifMsg,
+      metadata: { bookingId }
+    });
+  } catch (err) {
+    console.error(`[Admin] Failed to create refund_${status} notification:`, err.message);
+  }
+};
+
 
 // ——————————————————————————————————————————————————————————————————————————————
 
@@ -371,22 +438,24 @@ const updateBookingRefund = async (req, res, next) => {
 
       if (refund_status === 'processing') {
         // Call Stripe refund API
+        let actualStatus = 'processing';
         try {
           const stripeRefund = await stripe.refunds.create({
             payment_intent: payment.transaction_reference
           });
 
           // Stripe refund status can be succeeded, pending, failed, or cancelled
-          const nextStatus = stripeRefund.status === 'succeeded' ? 'completed' : 'processing';
+          actualStatus = stripeRefund.status === 'succeeded' ? 'completed' : 'processing';
 
           await Booking.updateRefundAtomic(id, {
-            refundStatus: nextStatus,
+            refundStatus: actualStatus,
             providerRef: stripeRefund.id,
             reason: refund_reason || 'Stripe Refund Request',
             adminNotes: refund_admin_notes
           });
         } catch (stripeError) {
           if (stripeError.message && stripeError.message.includes("already been refunded")) {
+            actualStatus = 'completed';
             const stripeRefunds = await stripe.refunds.list({ payment_intent: payment.transaction_reference });
             const refundId = stripeRefunds.data[0]?.id || "ALREADY_REFUNDED";
             await Booking.updateRefundAtomic(id, {
@@ -401,15 +470,20 @@ const updateBookingRefund = async (req, res, next) => {
               reason: stripeError.message,
               adminNotes: refund_admin_notes
             });
+            // Notify user of refund failure before returning 400
+            await enqueueRefundNotification(booking.user_id, id, 'failed');
             return res.status(400).json({ success: false, message: `Stripe Refund API error: ${stripeError.message}` });
           }
         }
+        // Notify user of the actual resolved status (processing or completed)
+        await enqueueRefundNotification(booking.user_id, id, actualStatus);
       } else {
         await Booking.updateRefundAtomic(id, {
           refundStatus: refund_status,
           reason: refund_reason,
           adminNotes: refund_admin_notes
         });
+        await enqueueRefundNotification(booking.user_id, id, refund_status);
       }
     } else {
       // Manual / non-Stripe payments
@@ -421,6 +495,7 @@ const updateBookingRefund = async (req, res, next) => {
         reason: refund_reason || 'Manual/Demo Refund',
         adminNotes: refund_admin_notes
       });
+      await enqueueRefundNotification(booking.user_id, id, refund_status);
     }
 
     const updated = await Booking.findById(id);
@@ -429,6 +504,42 @@ const updateBookingRefund = async (req, res, next) => {
       message: `Booking refund status updated to '${refund_status}'.`,
       data: { booking: updated }
     });
+  } catch (error) {
+    console.error(error); next(error);
+  }
+};
+
+// ─── CRON ENDPOINTS ──────────────────────────────────────────────────────────
+
+/**
+ * POST /api/v1/admin/cron/reminders
+ * Triggers one batch of the check-in reminder worker.
+ * Protected by: protect + adminOnly + X-Cron-Secret header.
+ * The secret value is NEVER logged.
+ */
+const triggerReminderCron = async (req, res, next) => {
+  try {
+    const cronSecret = process.env.CRON_SECRET;
+    if (!cronSecret) {
+      return res.status(503).json({ success: false, message: 'Cron endpoint not configured on this server.' });
+    }
+    const providedSecret = req.headers['x-cron-secret'];
+    // Constant-time comparison to prevent timing attacks
+    const crypto = require('crypto');
+    const expected = Buffer.from(cronSecret);
+    const provided = providedSecret ? Buffer.from(providedSecret) : Buffer.alloc(0);
+    const match =
+      expected.length === provided.length &&
+      crypto.timingSafeEqual(expected, provided);
+
+    if (!match) {
+      return res.status(403).json({ success: false, message: 'Invalid or missing cron secret.' });
+    }
+
+    const reminderWorker = require('../services/reminderWorker');
+    await reminderWorker.processBatch();
+
+    return res.status(200).json({ success: true, message: 'Reminder batch processed.' });
   } catch (error) {
     console.error(error); next(error);
   }
@@ -443,4 +554,5 @@ module.exports = {
   getEmailStats,
   retryEmail,
   updateBookingRefund,
+  triggerReminderCron,
 };
