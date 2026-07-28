@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from './NotificationBell';
+import ThemeSelector from './ThemeSelector';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -82,6 +83,9 @@ const Navbar = () => {
             )}
           </ul>
           <ul className="navbar-nav ms-auto align-items-center gap-2">
+            <li className="nav-item me-1">
+              <ThemeSelector />
+            </li>
             {!user ? (
               <>
                 <li className="nav-item">

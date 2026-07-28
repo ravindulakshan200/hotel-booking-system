@@ -3,6 +3,7 @@ import AdminLayout from '../../layouts/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { getAllBookings, updateBookingStatus, cleanupExpiredBookings, updateBookingRefund } from '../../services/adminService';
 import { formatCurrency } from '../../utils/formatters';
+import Pagination from '../../components/Pagination';
 
 const AdminBookings = () => {
   const [bookings, setBookings] = useState([]);
@@ -11,6 +12,7 @@ const AdminBookings = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [actionMessage, setActionMessage] = useState('');
   const [updatingId, setUpdatingId] = useState(null);
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total_pages: 1 });
 
   // Refund tracking modal state
   const [selectedRefundBooking, setSelectedRefundBooking] = useState(null);
@@ -18,20 +20,33 @@ const AdminBookings = () => {
   const [refundRef, setRefundRef] = useState('');
   const [refundNotes, setRefundNotes] = useState('');
 
-  const fetchBookings = useCallback(async () => {
+  const fetchBookings = useCallback(async (page = 1) => {
     try {
       setLoading(true);
-      const params = statusFilter ? `booking_status=${statusFilter}` : '';
-      const response = await getAllBookings(params);
-      setBookings(response.data?.data?.bookings || []);
+      const params = new URLSearchParams({
+        page,
+        limit: pagination.limit,
+        booking_status: statusFilter,
+        paginate: 'true'
+      });
+      const response = await getAllBookings(params.toString());
+      const data = response.data?.data;
+      if (data) {
+        setBookings(data.items || data.bookings || []);
+        setPagination({
+          page: data.page || 1,
+          limit: data.limit || 10,
+          total_pages: data.total_pages || 1,
+        });
+      }
     } catch (err) {
       setError('Failed to load bookings.');
     } finally {
       setLoading(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, pagination.limit]);
 
-  useEffect(() => { fetchBookings(); }, [fetchBookings]);
+  useEffect(() => { fetchBookings(1); }, [statusFilter, fetchBookings]);
 
   const handleStatusChange = async (id, status) => {
     setUpdatingId(id);
@@ -161,6 +176,13 @@ const AdminBookings = () => {
               </tbody>
             </table>
           </div>
+          {!loading && pagination.total_pages > 1 && (
+            <Pagination
+              page={pagination.page}
+              totalPages={pagination.total_pages}
+              onPageChange={(p) => fetchBookings(p)}
+            />
+          )}
         </div>
       )}
       {selectedRefundBooking && (

@@ -131,6 +131,14 @@ const login = async (req, res, next) => {
       });
     }
 
+    // Block deactivated accounts
+    if (user.is_active === 0 || user.is_active === false) {
+      return res.status(401).json({
+        success: false,
+        message: "Your account has been deactivated.",
+      });
+    }
+
     if (!user.email_verified_at) {
       return res.status(403).json({
         success: false,
@@ -292,4 +300,53 @@ const changePassword = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, logout, getProfile, updateProfile, changePassword };
+/**
+ * @desc    Self-deactivate account (password-confirmed)
+ * @route   POST /api/v1/auth/deactivate
+ * @access  Private
+ */
+const deactivateSelf = async (req, res, next) => {
+  try {
+    const { password } = req.body;
+
+    if (!password || typeof password !== 'string') {
+      return res.status(400).json({ success: false, message: 'Password is required to confirm deactivation.' });
+    }
+
+    // Verify password
+    const user = await User.findUserByEmail(req.user.email);
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Incorrect password.' });
+    }
+
+    // Guard: prevent deactivation if there are active bookings
+    const pool = require('../config/db');
+    const [[{ cnt }]] = await pool.query(
+      `SELECT COUNT(*) AS cnt FROM bookings
+       WHERE user_id = ? AND booking_status IN ('pending','confirmed','checked_in')`,
+      [req.user.id]
+    );
+    if (cnt > 0) {
+      return res.status(409).json({
+        success: false,
+        message: `You have ${cnt} active booking(s). Please cancel or complete them before deactivating your account.`,
+      });
+    }
+
+    await User.deactivate(req.user.id, 'self');
+
+    // Clear cookie immediately
+    res.cookie('jwt', '', { httpOnly: true, expires: new Date(0) });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Your account has been deactivated. You have been signed out.',
+      data: null,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { register, login, logout, getProfile, updateProfile, changePassword, deactivateSelf };

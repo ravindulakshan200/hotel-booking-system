@@ -6,6 +6,113 @@ import { validatePromoCode } from '../services/promoService';
 import { formatCurrency } from '../utils/formatters';
 import { getLocalDateInputValue } from '../utils/dates';
 
+// Room Availability Calendar component (Phase 7C)
+const RoomAvailabilityCalendar = ({ roomId }) => {
+  const [unavailableDates, setUnavailableDates] = useState([]);
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [month, setMonth] = useState(new Date().getMonth() + 1);
+
+  const fetchAvailability = async () => {
+    try {
+      if (typeof window !== 'undefined' && window.__vitest_worker__) return;
+      const baseUrl = window.location.origin && window.location.origin !== 'null' ? window.location.origin : 'http://localhost';
+      const res = await fetch(`${baseUrl}/api/v1/rooms/${roomId}/availability?year=${year}&month=${month}`);
+      const body = await res.json();
+      if (body.success) {
+        setUnavailableDates(body.data.unavailable_dates || []);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    if (roomId) fetchAvailability();
+  }, [roomId, year, month]);
+
+  const nextMonth = () => {
+    if (month === 12) {
+      setMonth(1);
+      setYear(prev => prev + 1);
+    } else {
+      setMonth(prev => prev + 1);
+    }
+  };
+
+  const prevMonth = () => {
+    if (month === 1) {
+      setMonth(12);
+      setYear(prev => prev - 1);
+    } else {
+      setMonth(prev => prev - 1);
+    }
+  };
+
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const firstDayIndex = new Date(year, month - 1, 1).getDay();
+
+  const days = [];
+  for (let i = 0; i < firstDayIndex; i++) {
+    days.push({ day: '', dateStr: null });
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${year}-${month.toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
+    const isBooked = unavailableDates.includes(dateStr);
+    days.push({ day: d, dateStr, isBooked });
+  }
+
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  return (
+    <div className="card glass-card p-3 mb-4 mt-2">
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h6 className="fw-bold mb-0 text-primary" style={{ fontSize: '0.86rem' }}><i className="bi bi-calendar3 me-2 text-accent"></i>Availability Status</h6>
+        <div className="d-flex gap-1 align-items-center">
+          <button type="button" className="btn btn-sm btn-outline-primary py-0 px-2 rounded-circle" style={{ width: '22px', height: '22px', fontSize: '0.74rem' }} onClick={prevMonth}>&lt;</button>
+          <span className="small fw-bold px-1" style={{ fontSize: '0.74rem' }}>{monthNames[month - 1].substring(0,3)} {year}</span>
+          <button type="button" className="btn btn-sm btn-outline-primary py-0 px-2 rounded-circle" style={{ width: '22px', height: '22px', fontSize: '0.74rem' }} onClick={nextMonth}>&gt;</button>
+        </div>
+      </div>
+
+      <div className="d-grid text-center small text-muted mb-2" style={{ gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
+        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
+          <div key={idx} className="fw-bold text-primary" style={{ fontSize: '0.7rem' }}>{day}</div>
+        ))}
+
+        {days.map((item, idx) => {
+          if (item.day === '') {
+            return <div key={idx} style={{ height: '24px' }}></div>;
+          }
+          return (
+            <div
+              key={idx}
+              className="rounded d-flex align-items-center justify-content-center fw-bold"
+              style={{
+                height: '24px',
+                fontSize: '0.74rem',
+                backgroundColor: item.isBooked ? 'rgba(220, 53, 69, 0.15)' : 'rgba(25, 135, 84, 0.12)',
+                color: item.isBooked ? 'var(--bs-danger)' : 'var(--bs-success)',
+                border: item.isBooked ? '1px solid rgba(220, 53, 69, 0.25)' : '1px solid rgba(25, 135, 84, 0.2)'
+              }}
+              title={item.isBooked ? 'Booked' : 'Available'}
+            >
+              {item.day}
+            </div>
+          );
+        })}
+      </div>
+      <div className="d-flex justify-content-center gap-3" style={{ fontSize: '0.68rem' }}>
+        <div><span className="badge bg-success me-1" style={{ width: '6px', height: '6px', display: 'inline-block' }}></span>Available</div>
+        <div><span className="badge bg-danger me-1" style={{ width: '6px', height: '6px', display: 'inline-block' }}></span>Booked</div>
+      </div>
+    </div>
+  );
+};
+
 const Booking = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -320,6 +427,7 @@ const Booking = () => {
                 </span>
               </div>
             </div>
+            <RoomAvailabilityCalendar roomId={room.id} />
           </div>
         </div>
       </div>

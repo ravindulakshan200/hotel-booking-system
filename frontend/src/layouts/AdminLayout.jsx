@@ -35,6 +35,9 @@ const AdminLayout = ({ children, title }) => {
           <NavLink to="/admin/users" className={navLinkClass}><i className="bi bi-people text-accent"></i> Customers</NavLink>
           <NavLink to="/admin/payments" className={navLinkClass}><i className="bi bi-credit-card text-accent"></i> Payments</NavLink>
           <NavLink to="/admin/reviews" className={navLinkClass}><i className="bi bi-star text-accent"></i> Reviews</NavLink>
+          <NavLink to="/admin/support" className={navLinkClass}><i className="bi bi-chat-square-text text-accent"></i> Support</NavLink>
+          <NavLink to="/admin/audit-logs" className={navLinkClass}><i className="bi bi-clock-history text-accent"></i> Audit Logs</NavLink>
+          <NavLink to="/admin/reports" className={navLinkClass}><i className="bi bi-file-earmark-bar-graph text-accent"></i> Reports</NavLink>
         </nav>
 
         <div className="mt-5 pt-4 border-top border-secondary">

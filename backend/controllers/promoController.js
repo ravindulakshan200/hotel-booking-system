@@ -122,6 +122,16 @@ const createPromo = async (req, res, next) => {
     const promoId = await PromoCode.create(req.body);
     const newPromo = await PromoCode.findById(promoId);
 
+    const AuditLog = require("../models/AuditLog");
+    await AuditLog.create({
+      adminId: req.user.id,
+      action: "promo_created",
+      entityType: "promo",
+      entityId: promoId,
+      metadata: { code: req.body.code },
+      ip: req.ip
+    });
+
     return res.status(201).json({
       success: true,
       message: "Promo code created successfully.",
@@ -159,6 +169,16 @@ const updatePromo = async (req, res, next) => {
     await PromoCode.update(id, req.body);
     const updated = await PromoCode.findById(id);
 
+    const AuditLog = require("../models/AuditLog");
+    await AuditLog.create({
+      adminId: req.user.id,
+      action: "promo_updated",
+      entityType: "promo",
+      entityId: id,
+      metadata: { code: updated.code, updated_fields: Object.keys(req.body) },
+      ip: req.ip
+    });
+
     return res.status(200).json({
       success: true,
       message: "Promo code updated successfully.",
@@ -182,6 +202,17 @@ const deletePromo = async (req, res, next) => {
     }
 
     await PromoCode.delete(id);
+
+    const AuditLog = require("../models/AuditLog");
+    await AuditLog.create({
+      adminId: req.user.id,
+      action: "promo_deleted",
+      entityType: "promo",
+      entityId: id,
+      metadata: { code: promo.code },
+      ip: req.ip
+    });
+
     return res.status(200).json({
       success: true,
       message: "Promo code deleted successfully.",

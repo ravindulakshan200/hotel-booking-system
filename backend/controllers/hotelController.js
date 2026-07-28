@@ -132,14 +132,23 @@ const getAllHotels = async (req, res, next) => {
     if ((city && city.length > 100) || (search && search.length > 150)) {
       return res.status(400).json({ success: false, message: "Search filter is too long." });
     }
-    const hotels = await Hotel.findAll({ city, search });
+    const paginate = req.query.paginate === 'true';
+    const result = await Hotel.findAll({ city, search }, { ...req.query, paginate });
+
+    if (paginate) {
+      return res.status(200).json({
+        success: true,
+        message: result.items.length > 0 ? "Hotels fetched successfully." : "No hotels found.",
+        ...result,
+      });
+    }
 
     return res.status(200).json({
       success: true,
-      message: hotels.length > 0 ? "Hotels fetched successfully." : "No hotels found.",
+      message: result.length > 0 ? "Hotels fetched successfully." : "No hotels found.",
       data: {
-        count: hotels.length,
-        hotels,
+        count: result.length,
+        hotels: result,
       },
     });
   } catch (error) {
@@ -179,7 +188,8 @@ const searchAvailability = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Invalid sort option." });
     }
 
-    const hotels = await Hotel.findAvailable({
+    const paginate = req.query.paginate === 'true';
+    const result = await Hotel.findAvailable({
       city,
       check_in,
       check_out,
@@ -188,14 +198,22 @@ const searchAvailability = async (req, res, next) => {
       min_price: min_price ? Number(min_price) : undefined,
       max_price: max_price ? Number(max_price) : undefined,
       sort
-    });
+    }, { ...req.query, paginate });
+
+    if (paginate) {
+      return res.status(200).json({
+        success: true,
+        message: result.items.length > 0 ? "Hotels found." : "No hotels available for selected criteria.",
+        ...result,
+      });
+    }
 
     return res.status(200).json({
       success: true,
-      message: hotels.length > 0 ? "Hotels found." : "No hotels available for selected criteria.",
+      message: result.length > 0 ? "Hotels found." : "No hotels available for selected criteria.",
       data: {
-        count: hotels.length,
-        hotels,
+        count: result.length,
+        hotels: result,
       },
     });
   } catch (error) {
@@ -288,6 +306,16 @@ const createHotel = async (req, res, next) => {
     // Insert and retrieve the new record
     const newHotelId = await Hotel.create(hotelData);
     const newHotel   = await Hotel.findById(newHotelId);
+
+    const AuditLog = require("../models/AuditLog");
+    await AuditLog.create({
+      adminId: req.user.id,
+      action: "hotel_created",
+      entityType: "hotel",
+      entityId: newHotelId,
+      metadata: { name, city },
+      ip: req.ip
+    });
 
     return res.status(201).json({
       success: true,
@@ -382,6 +410,16 @@ const updateHotel = async (req, res, next) => {
 
     await Hotel.update(id, providedFields);
 
+    const AuditLog = require("../models/AuditLog");
+    await AuditLog.create({
+      adminId: req.user.id,
+      action: "hotel_updated",
+      entityType: "hotel",
+      entityId: id,
+      metadata: { updated_fields: Object.keys(providedFields) },
+      ip: req.ip
+    });
+
     // Return the fully updated record
     const updatedHotel = await Hotel.findById(id);
 
@@ -429,6 +467,16 @@ const deleteHotel = async (req, res, next) => {
 
     await Hotel.delete(id);
 
+    const AuditLog = require("../models/AuditLog");
+    await AuditLog.create({
+      adminId: req.user.id,
+      action: "hotel_deleted",
+      entityType: "hotel",
+      entityId: id,
+      metadata: { name: existing.name },
+      ip: req.ip
+    });
+
     return res.status(200).json({
       success: true,
       message: "Hotel deleted successfully.",
@@ -462,6 +510,17 @@ const archiveHotel = async (req, res, next) => {
     if (existing.is_archived) return res.status(400).json({ success: false, message: "Hotel is already archived." });
 
     await Hotel.update(id, { is_archived: true });
+
+    const AuditLog = require("../models/AuditLog");
+    await AuditLog.create({
+      adminId: req.user.id,
+      action: "hotel_archived",
+      entityType: "hotel",
+      entityId: id,
+      metadata: { name: existing.name },
+      ip: req.ip
+    });
+
     return res.status(200).json({ success: true, message: "Hotel archived successfully." });
   } catch (error) {
     next(error);
@@ -483,6 +542,17 @@ const unarchiveHotel = async (req, res, next) => {
     if (!existing.is_archived) return res.status(400).json({ success: false, message: "Hotel is not archived." });
 
     await Hotel.update(id, { is_archived: false });
+
+    const AuditLog = require("../models/AuditLog");
+    await AuditLog.create({
+      adminId: req.user.id,
+      action: "hotel_unarchived",
+      entityType: "hotel",
+      entityId: id,
+      metadata: { name: existing.name },
+      ip: req.ip
+    });
+
     return res.status(200).json({ success: true, message: "Hotel unarchived successfully." });
   } catch (error) {
     next(error);

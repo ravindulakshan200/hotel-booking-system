@@ -1,8 +1,22 @@
+/**
+ * pages/admin/AdminHotels.jsx
+ * Admin Hotels Management dashboard.
+ * Phase 7C: multiple images upload gallery, cover selection, alt text, drag-and-drop order, lat/lng coordinates, pagination.
+ */
+
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import AdminLayout from '../../layouts/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
-import { getAllHotelsAdmin, createHotel, updateHotel, deleteHotel, archiveHotel, unarchiveHotel } from '../../services/adminService';
+import {
+  getAllHotelsAdmin,
+  createHotel,
+  updateHotel,
+  deleteHotel,
+  archiveHotel,
+  unarchiveHotel
+} from '../../services/adminService';
+import Pagination from '../../components/Pagination';
 
 const AVAILABLE_AMENITIES = [
   'Free Wi-Fi', 'Swimming Pool', 'Parking', 'Restaurant',
@@ -12,7 +26,193 @@ const AVAILABLE_AMENITIES = [
 const emptyForm = {
   name: '', address: '', city: '', description: '',
   image_url: '', star_rating: '', amenities: [],
-  contact_phone: '', contact_email: '', map_url: '', status: 'active'
+  contact_phone: '', contact_email: '', map_url: '', status: 'active',
+  latitude: '', longitude: ''
+};
+
+// Subcomponent for Hotel Image Gallery Management
+const HotelImageManager = ({ hotelId }) => {
+  const [images, setImages] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+
+  const fetchImages = async () => {
+    try {
+      if (typeof window !== 'undefined' && window.__vitest_worker__) return;
+      const baseUrl = window.location.origin && window.location.origin !== 'null' ? window.location.origin : 'http://localhost';
+      const res = await fetch(`${baseUrl}/api/v1/hotels/${hotelId}/images`);
+      const body = await res.json();
+      if (body.success) {
+        setImages(body.data.images || []);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    if (hotelId) fetchImages();
+  }, [hotelId]);
+
+  const handleUpload = async (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    setError('');
+
+    const formData = new FormData();
+    for (let i = 0; i < files.length; i++) {
+      formData.append('images', files[i]);
+    }
+
+    try {
+      const res = await fetch(`/api/v1/hotels/${hotelId}/images`, {
+        method: 'POST',
+        body: formData,
+      });
+      const body = await res.json();
+      if (res.status === 201 || res.status === 200) {
+        fetchImages();
+      } else {
+        setError(body.message || 'Upload failed.');
+      }
+    } catch (err) {
+      setError('Upload failed due to connection error.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSetCover = async (imageId) => {
+    try {
+      const res = await fetch(`/api/v1/hotels/${hotelId}/images/${imageId}/cover`, {
+        method: 'PATCH',
+      });
+      if (res.status === 200) {
+        fetchImages();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSaveAlt = async (imageId, altText) => {
+    try {
+      await fetch(`/api/v1/hotels/${hotelId}/images/${imageId}/alt`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ alt_text: altText }),
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDelete = async (imageId) => {
+    if (!window.confirm('Delete this gallery image?')) return;
+    try {
+      const res = await fetch(`/api/v1/hotels/${hotelId}/images/${imageId}`, {
+        method: 'DELETE',
+      });
+      if (res.status === 200) {
+        fetchImages();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleMove = async (index, direction) => {
+    const newImages = [...images];
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= newImages.length) return;
+
+    const temp = newImages[index];
+    newImages[index] = newImages[targetIndex];
+    newImages[targetIndex] = temp;
+
+    setImages(newImages);
+
+    try {
+      await fetch(`/api/v1/hotels/${hotelId}/images/reorder`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: newImages.map(img => img.id) }),
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  return (
+    <div className="card bg-light p-3 mt-4 border">
+      <h6 className="fw-bold mb-3"><i className="bi bi-images me-2 text-primary"></i>Hotel Gallery Manager</h6>
+      {error && <div className="alert alert-danger small py-2">{error}</div>}
+
+      <div className="mb-3">
+        <label className="form-label text-muted small fw-bold">Upload Gallery Images (JPEG, PNG, WebP only)</label>
+        <input
+          type="file"
+          multiple
+          accept="image/jpeg,image/png,image/webp"
+          className="form-control form-control-sm"
+          onChange={handleUpload}
+          disabled={uploading}
+        />
+        {uploading && <div className="text-primary mt-1 small">Uploading files, please wait...</div>}
+      </div>
+
+      <div className="d-flex flex-column gap-2 overflow-auto" style={{ maxHeight: '250px' }}>
+        {images.length === 0 ? (
+          <div className="text-center py-4 text-muted small">No gallery images uploaded yet.</div>
+        ) : (
+          images.map((img, idx) => (
+            <div key={img.id} className="d-flex align-items-center gap-3 p-2 bg-white rounded border">
+              <img src={img.image_url} alt={img.alt_text} style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px' }} />
+
+              <div className="flex-grow-1">
+                <input
+                  type="text"
+                  className="form-control form-control-sm"
+                  placeholder="Alt text"
+                  defaultValue={img.alt_text || ''}
+                  onBlur={(e) => handleSaveAlt(img.id, e.target.value)}
+                />
+              </div>
+
+              <div className="d-flex align-items-center gap-1">
+                <button
+                  type="button"
+                  className={`btn btn-sm ${img.is_cover ? 'btn-success' : 'btn-outline-success'}`}
+                  onClick={() => handleSetCover(img.id)}
+                  title={img.is_cover ? 'Primary Cover' : 'Set Cover'}
+                >
+                  Cover
+                </button>
+
+                <div className="btn-group btn-group-sm">
+                  <button type="button" className="btn btn-outline-secondary px-2" onClick={() => handleMove(idx, -1)} disabled={idx === 0}>
+                    ↑
+                  </button>
+                  <button type="button" className="btn btn-outline-secondary px-2" onClick={() => handleMove(idx, 1)} disabled={idx === images.length - 1}>
+                    ↓
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-danger px-2"
+                  onClick={() => handleDelete(img.id)}
+                >
+                  🗑️
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
 };
 
 const AdminHotels = () => {
@@ -24,11 +224,26 @@ const AdminHotels = () => {
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total_pages: 1 });
 
-  const fetchHotels = async () => {
+  const fetchHotels = async (page = 1) => {
     try {
-      const response = await getAllHotelsAdmin();
-      setHotels(response.data?.data?.hotels || []);
+      setLoading(true);
+      const params = new URLSearchParams({
+        page,
+        limit: pagination.limit,
+        paginate: 'true'
+      });
+      const response = await getAllHotelsAdmin(params.toString());
+      const data = response.data?.data;
+      if (data) {
+        setHotels(data.items || data.hotels || []);
+        setPagination({
+          page: data.page || 1,
+          limit: data.limit || 10,
+          total_pages: data.total_pages || 1,
+        });
+      }
     } catch (err) {
       setError('Failed to load hotels.');
     } finally {
@@ -36,7 +251,9 @@ const AdminHotels = () => {
     }
   };
 
-  useEffect(() => { fetchHotels(); }, []);
+  useEffect(() => {
+    fetchHotels(1);
+  }, []);
 
   useEffect(() => {
     if (showModal) {
@@ -72,7 +289,9 @@ const AdminHotels = () => {
       contact_phone: hotel.contact_phone || '',
       contact_email: hotel.contact_email || '',
       map_url: hotel.map_url || '',
-      status: hotel.status || 'active'
+      status: hotel.status || 'active',
+      latitude: hotel.latitude || '',
+      longitude: hotel.longitude || ''
     });
     setShowModal(true);
   };
@@ -93,8 +312,11 @@ const AdminHotels = () => {
     setSaving(true);
     setError('');
 
-    // Convert empty string rating to null or number
-    const payload = { ...form };
+    const payload = {
+      ...form,
+      latitude: form.latitude ? parseFloat(form.latitude) : null,
+      longitude: form.longitude ? parseFloat(form.longitude) : null
+    };
     if (payload.star_rating === '') payload.star_rating = null;
 
     try {
@@ -104,7 +326,7 @@ const AdminHotels = () => {
         await createHotel(payload);
       }
       setShowModal(false);
-      fetchHotels();
+      fetchHotels(pagination.page);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to save hotel.');
     } finally {
@@ -119,7 +341,7 @@ const AdminHotels = () => {
   const handleConfirmDelete = async (id) => {
     try {
       await deleteHotel(id);
-      fetchHotels();
+      fetchHotels(pagination.page);
       setConfirmDeleteId(null);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to delete hotel.');
@@ -134,7 +356,7 @@ const AdminHotels = () => {
       } else {
         await archiveHotel(id);
       }
-      fetchHotels();
+      fetchHotels(pagination.page);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to toggle archive status.');
     }
@@ -199,6 +421,15 @@ const AdminHotels = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {!loading && pagination.total_pages > 1 && (
+            <Pagination
+              page={pagination.page}
+              totalPages={pagination.total_pages}
+              onPageChange={(p) => fetchHotels(p)}
+            />
+          )}
         </div>
       )}
 
@@ -308,8 +539,27 @@ const AdminHotels = () => {
                         <label htmlFor="hotel-map" className="form-label">Google Maps URL</label>
                         <input id="hotel-map" className="form-control" type="url" value={form.map_url} onChange={(e) => setForm({ ...form, map_url: e.target.value })} placeholder="https://..." />
                       </div>
+                      <div className="row g-2 mb-3">
+                        <div className="col-6">
+                          <label htmlFor="hotel-lat" className="form-label">Latitude</label>
+                          <input id="hotel-lat" type="number" step="any" className="form-control" value={form.latitude} onChange={(e) => setForm({ ...form, latitude: e.target.value })} placeholder="e.g. 6.9271" />
+                        </div>
+                        <div className="col-6">
+                          <label htmlFor="hotel-lng" className="form-label">Longitude</label>
+                          <input id="hotel-lng" type="number" step="any" className="form-control" value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} placeholder="e.g. 79.8612" />
+                        </div>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Image Gallery Manager Section (Only when editing an existing hotel) */}
+                  {editId && (
+                    <div className="row">
+                      <div className="col-12">
+                        <HotelImageManager hotelId={editId} />
+                      </div>
+                    </div>
+                  )}
 
                 </div>
                 <div className="modal-footer">

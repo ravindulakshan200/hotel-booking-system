@@ -23,6 +23,7 @@
 
 const bcrypt = require("bcryptjs");
 const pool   = require("../config/db");
+const { parsePagination, buildPaginatedResponse } = require('../utils/paginate');
 
 const SALT_ROUNDS = 12;
 
@@ -68,13 +69,13 @@ const User = {
    */
   findUserByEmail: async (email) => {
     const [rows] = await pool.query(
-      `SELECT id, first_name, last_name, email, password, phone, role, created_at, email_verified_at, password_changed_at
+      `SELECT id, first_name, last_name, email, password, phone, role,
+              created_at, email_verified_at, password_changed_at, is_active
        FROM users
        WHERE email = ?
        LIMIT 1`,
       [email.trim().toLowerCase()]
     );
-
     return rows[0] || null;
   },
 
@@ -88,30 +89,53 @@ const User = {
    */
   findUserById: async (id) => {
     const [rows] = await pool.query(
-      `SELECT id, first_name, last_name, email, phone, role, created_at, email_verified_at, password_changed_at
+      `SELECT id, first_name, last_name, email, phone, role,
+              created_at, email_verified_at, password_changed_at, is_active
        FROM users
        WHERE id = ?
        LIMIT 1`,
       [id]
     );
-
     return rows[0] || null;
   },
 
-  findAll: async (filters = {}) => {
-    let sql = `SELECT id, first_name, last_name, email, phone, role, created_at
-               FROM users`;
+  findAll: async (filters = {}, queryParams = {}) => {
+    const conditions = [];
     const params = [];
 
     if (filters.role) {
-      sql += " WHERE role = ?";
+      conditions.push('role = ?');
       params.push(filters.role);
     }
+    if (filters.is_active !== undefined) {
+      conditions.push('is_active = ?');
+      params.push(filters.is_active ? 1 : 0);
+    }
+    if (filters.search) {
+      conditions.push('(first_name LIKE ? OR last_name LIKE ? OR email LIKE ?)');
+      const t = `%${filters.search}%`;
+      params.push(t, t, t);
+    }
 
-    sql += " ORDER BY created_at DESC";
+    const where = conditions.length ? ' WHERE ' + conditions.join(' AND ') : '';
+    const orderBy = ' ORDER BY created_at DESC, id DESC';
 
-    const [rows] = await pool.query(sql, params);
-    return rows;
+    if (!queryParams.paginate) {
+      const [rows] = await pool.query(
+        `SELECT id, first_name, last_name, email, phone, role, is_active, deactivated_at, created_at FROM users${where}${orderBy}`,
+        params
+      );
+      return rows;
+    }
+
+    const { page, limit, offset } = parsePagination(queryParams);
+    const [[{ total }]] = await pool.query(`SELECT COUNT(*) AS total FROM users${where}`, params);
+    const [rows] = await pool.query(
+      `SELECT id, first_name, last_name, email, phone, role, is_active, deactivated_at, created_at
+       FROM users${where}${orderBy} LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
+    return buildPaginatedResponse(rows, total, page, limit);
   },
 
   updateProfile: async (id, updates) => {
@@ -212,6 +236,39 @@ const User = {
       [tokenHash]
     );
     return rows[0] || null;
+  },
+
+  /** Soft-deactivate a user account */
+  deactivate: async (id, reason = 'self') => {
+    const [result] = await pool.query(
+      `UPDATE users
+       SET is_active = 0, deactivated_at = CURRENT_TIMESTAMP, deactivation_reason = ?
+       WHERE id = ?`,
+      [reason, id]
+    );
+    return result.affectedRows;
+  },
+
+  /** Reactivate a previously deactivated account */
+  reactivate: async (id) => {
+    const [result] = await pool.query(
+      `UPDATE users
+       SET is_active = 1, deactivated_at = NULL, deactivation_reason = NULL
+       WHERE id = ?`,
+      [id]
+    );
+    return result.affectedRows;
+  },
+
+  /**
+   * Count active admin accounts.
+   * Used to prevent removing the last active admin.
+   */
+  countActiveAdmins: async () => {
+    const [[{ cnt }]] = await pool.query(
+      `SELECT COUNT(*) AS cnt FROM users WHERE role = 'admin' AND is_active = 1`
+    );
+    return cnt;
   },
 };
 

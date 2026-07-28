@@ -10,8 +10,8 @@ export const getMyPayments = async () => {
   return response;
 };
 
-export const getAllPayments = async () => {
-  const response = await api.get('/payments');
+export const getAllPayments = async (params = '') => {
+  const response = await api.get(`/payments${params ? `?${params}` : ''}`);
   return response;
 };
 

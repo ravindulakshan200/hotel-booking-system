@@ -129,31 +129,60 @@ const MyBookings = () => {
                         )}
                       </td>
                       <td className="pe-4 py-3 text-end">
-                        {['confirmed', 'pending'].includes(booking.booking_status) ? (
-                          confirmCancelId === booking.id ? (
-                            <div className="d-flex flex-column align-items-end gap-2">
-                              <input
-                                type="text"
-                                className="form-control form-control-sm"
-                                placeholder="Reason (optional)"
-                                value={cancelReason}
-                                onChange={(e) => setCancelReason(e.target.value)}
-                              />
-                              <div className="btn-group">
-                                <button type="button" className="btn btn-sm btn-danger" onClick={() => handleCancel(booking.id)}>Confirm</button>
-                                <button type="button" className="btn btn-sm btn-secondary" onClick={() => { setConfirmCancelId(null); setCancelReason(''); }}>Keep</button>
+                        <div className="d-flex align-items-center justify-content-end gap-1 flex-wrap">
+                          {/* Invoice PDF download (available for all bookings except pending/expired) */}
+                          {booking.booking_status !== 'pending' && booking.booking_status !== 'expired' && (
+                            <a
+                              href={`/api/v1/bookings/${booking.id}/invoice.pdf`}
+                              download={`invoice-${booking.id}.pdf`}
+                              className="btn btn-sm btn-outline-secondary rounded-pill px-3"
+                              style={{ fontSize: '0.74rem' }}
+                              title="Download Invoice PDF"
+                            >
+                              <i className="bi bi-file-earmark-pdf me-1"></i>Invoice
+                            </a>
+                          )}
+
+                          {/* Receipt PDF download (only available for confirmed/checked_in/checked_out/completed paid bookings) */}
+                          {['confirmed', 'completed', 'checked_in', 'checked_out'].includes(booking.booking_status) && (
+                            <a
+                              href={`/api/v1/bookings/${booking.id}/receipt.pdf`}
+                              download={`receipt-${booking.id}.pdf`}
+                              className="btn btn-sm btn-outline-success rounded-pill px-3"
+                              style={{ fontSize: '0.74rem' }}
+                              title="Download Receipt PDF"
+                            >
+                              <i className="bi bi-receipt me-1"></i>Receipt
+                            </a>
+                          )}
+
+                          {['confirmed', 'pending'].includes(booking.booking_status) ? (
+                            confirmCancelId === booking.id ? (
+                              <div className="d-flex flex-column align-items-end gap-2 ms-2">
+                                <input
+                                  type="text"
+                                  className="form-control form-control-sm"
+                                  placeholder="Reason (optional)"
+                                  value={cancelReason}
+                                  onChange={(e) => setCancelReason(e.target.value)}
+                                  style={{ maxWidth: '140px' }}
+                                />
+                                <div className="btn-group">
+                                  <button type="button" className="btn btn-sm btn-danger py-1" onClick={() => handleCancel(booking.id)}>Confirm</button>
+                                  <button type="button" className="btn btn-sm btn-secondary py-1" onClick={() => { setConfirmCancelId(null); setCancelReason(''); }}>Keep</button>
+                                </div>
                               </div>
-                            </div>
+                            ) : (
+                              <button type="button" className="btn btn-sm btn-outline-danger rounded-pill px-3" onClick={() => setConfirmCancelId(booking.id)} style={{ fontSize: '0.74rem' }}>Cancel</button>
+                            )
+                          ) : booking.booking_status === 'completed' ? (
+                            <Link to={`/hotels/${booking.hotel_id}`} className="btn btn-sm btn-outline-primary px-3 rounded-pill" style={{ fontSize: '0.74rem' }}>
+                              Leave Review
+                            </Link>
                           ) : (
-                            <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => setConfirmCancelId(booking.id)}>Cancel</button>
-                          )
-                        ) : booking.booking_status === 'completed' ? (
-                          <Link to={`/hotels/${booking.hotel_id}`} className="btn btn-sm btn-outline-primary px-3 rounded-pill">
-                            Leave Review
-                          </Link>
-                        ) : (
-                          <span className="text-muted" style={{ fontSize: '0.85rem' }}>N/A</span>
-                        )}
+                            <span className="text-muted" style={{ fontSize: '0.85rem' }}>—</span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

@@ -321,14 +321,86 @@ const deleteUser = async (req, res, next) => {
     if (error.code === "ER_ROW_IS_REFERENCED_2") {
       return res.status(409).json({
         success: false,
-        message: "Cannot delete user â€” they have existing bookings or reviews.",
+        message: "Cannot delete user — they have existing bookings or reviews.",
       });
     }
     console.error(error); next(error);
   }
 };
 
-// â”€â”€â”€ BOOKING MANAGEMENT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── USER DEACTIVATION / REACTIVATION ────────────────────────────────────────
+
+const deactivateUser = async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id) || id < 1) {
+      return res.status(400).json({ success: false, message: 'Invalid user ID.' });
+    }
+
+    const user = await User.findUserById(id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+    if (user.id === req.user.id) {
+      return res.status(403).json({ success: false, message: 'Cannot deactivate your own account.' });
+    }
+    if (!user.is_active) {
+      return res.status(400).json({ success: false, message: 'User is already deactivated.' });
+    }
+
+    const reason = (req.body && req.body.reason) || 'admin_action';
+    await User.deactivate(id, reason);
+
+    const AuditLog = require('../models/AuditLog');
+    await AuditLog.create({
+      adminId: req.user.id,
+      action: 'user_deactivated',
+      entityType: 'user',
+      entityId: id,
+      metadata: { email: user.email },
+      ip: req.ip,
+    });
+
+    return res.status(200).json({ success: true, message: 'User deactivated successfully.', data: null });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const reactivateUser = async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id) || id < 1) {
+      return res.status(400).json({ success: false, message: 'Invalid user ID.' });
+    }
+
+    const user = await User.findUserById(id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+    if (user.is_active) {
+      return res.status(400).json({ success: false, message: 'User is already active.' });
+    }
+
+    await User.reactivate(id);
+
+    const AuditLog = require('../models/AuditLog');
+    await AuditLog.create({
+      adminId: req.user.id,
+      action: 'user_reactivated',
+      entityType: 'user',
+      entityId: id,
+      metadata: { email: user.email },
+      ip: req.ip,
+    });
+
+    return res.status(200).json({ success: true, message: 'User reactivated successfully.', data: null });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── BOOKING MANAGEMENT ───────────────────────────────────────────────────────
 
 const updateBookingStatus = async (req, res, next) => {
   try {
@@ -348,6 +420,16 @@ const updateBookingStatus = async (req, res, next) => {
 
     const result = await Booking.updateStatusAtomic(id, status, { actorUserId: req.user.id, reason });
     const updated = await Booking.findById(id);
+
+    const AuditLog = require('../models/AuditLog');
+    await AuditLog.create({
+      adminId: req.user.id,
+      action: 'booking_status_updated',
+      entityType: 'booking',
+      entityId: id,
+      metadata: { new_status: status },
+      ip: req.ip
+    });
 
     return res.status(200).json({
       success: true,
@@ -499,6 +581,17 @@ const updateBookingRefund = async (req, res, next) => {
     }
 
     const updated = await Booking.findById(id);
+
+    const AuditLog = require('../models/AuditLog');
+    await AuditLog.create({
+      adminId: req.user.id,
+      action: 'booking_refund_updated',
+      entityType: 'booking',
+      entityId: id,
+      metadata: { refund_status },
+      ip: req.ip
+    });
+
     return res.status(200).json({
       success: true,
       message: `Booking refund status updated to '${refund_status}'.`,
@@ -550,6 +643,8 @@ module.exports = {
   getAllUsers,
   getAllHotelsAdmin,
   deleteUser,
+  deactivateUser,
+  reactivateUser,
   updateBookingStatus,
   getEmailStats,
   retryEmail,
