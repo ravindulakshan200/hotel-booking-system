@@ -903,12 +903,6 @@ CREATE TABLE IF NOT EXISTS receipts (
   COMMENT='Receipt number registry — only created after confirmed payment';
 
 
--- =============================================================================
-) ENGINE=InnoDB
-  DEFAULT CHARSET=utf8mb4
-  COLLATE=utf8mb4_unicode_ci
-  COMMENT='Tracks sent check-in reminders to prevent duplicates per booking';
-
 
 -- =============================================================================
 -- TABLE: hotel_images (Migration 011)
