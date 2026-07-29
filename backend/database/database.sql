@@ -48,13 +48,17 @@ CREATE TABLE IF NOT EXISTS users (
   password_reset_token_hash VARCHAR(255) NULL DEFAULT NULL,
   password_reset_expires_at TIMESTAMP NULL DEFAULT NULL,
   password_changed_at TIMESTAMP NULL DEFAULT NULL,
+  is_active          TINYINT(1)  NOT NULL DEFAULT 1 COMMENT '0 = deactivated (soft-deleted), 1 = active',
+  deactivated_at     TIMESTAMP   NULL DEFAULT NULL COMMENT 'When the account was deactivated',
+  deactivation_reason VARCHAR(500) NULL DEFAULT NULL COMMENT 'Admin-supplied reason or "self" for self-deactivation',
   created_at   TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at   TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP
                                         ON UPDATE CURRENT_TIMESTAMP,
 
   -- Constraints
   PRIMARY KEY  (id),
-  UNIQUE  KEY  uq_users_email (email)
+  UNIQUE  KEY  uq_users_email (email),
+  INDEX idx_users_is_active (is_active)
 
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
@@ -80,6 +84,8 @@ CREATE TABLE IF NOT EXISTS hotels (
   contact_phone VARCHAR(20)   DEFAULT NULL,
   contact_email VARCHAR(150)  DEFAULT NULL,
   map_url      VARCHAR(500)   DEFAULT NULL,
+  latitude     DECIMAL(10, 7) NULL DEFAULT NULL COMMENT 'WGS-84 latitude  (-90 to +90)',
+  longitude    DECIMAL(10, 7) NULL DEFAULT NULL COMMENT 'WGS-84 longitude (-180 to +180)',
   status       ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
   is_archived  BOOLEAN        NOT NULL DEFAULT FALSE,
   created_at   TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -465,6 +471,11 @@ CREATE TABLE IF NOT EXISTS reviews (
   hotel_id     INT            NOT NULL COMMENT 'FK → hotels.id',
   rating       TINYINT        NOT NULL COMMENT '1-5 star rating',
   comment      TEXT           DEFAULT NULL,
+  is_hidden    TINYINT(1)     NOT NULL DEFAULT 0 COMMENT '1 = hidden by admin moderation',
+  hidden_at    TIMESTAMP      NULL DEFAULT NULL,
+  hidden_by_admin_id INT      NULL DEFAULT NULL,
+  is_deleted   TINYINT(1)     NOT NULL DEFAULT 0 COMMENT '1 = soft-deleted by owner or admin',
+  deleted_at   TIMESTAMP      NULL DEFAULT NULL,
   created_at   TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
   PRIMARY KEY (id),
@@ -702,3 +713,418 @@ CREATE TABLE IF NOT EXISTS checkin_reminders (
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci
   COMMENT='Tracks sent check-in reminders to prevent duplicates per booking';
+
+
+-- =============================================================================
+-- TABLE: hotel_images (Migration 011)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS hotel_images (
+  id           INT            NOT NULL AUTO_INCREMENT,
+  hotel_id     INT            NOT NULL,
+  storage_key  VARCHAR(512)   NOT NULL COMMENT 'Adapter-specific unique key (never original filename)',
+  url          VARCHAR(1024)  NOT NULL COMMENT 'Public URL served to clients',
+  alt_text     VARCHAR(255)   NOT NULL DEFAULT '' COMMENT 'Accessibility alt text',
+  sort_order   SMALLINT       NOT NULL DEFAULT 0,
+  is_cover     TINYINT(1)     NOT NULL DEFAULT 0,
+  created_at   TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  UNIQUE KEY  uq_hotel_images_storage_key (storage_key),
+  KEY         idx_hotel_images_hotel_id   (hotel_id),
+  KEY         idx_hotel_images_sort       (hotel_id, sort_order),
+
+  CONSTRAINT fk_hotel_images_hotel
+    FOREIGN KEY (hotel_id) REFERENCES hotels (id)
+    ON DELETE CASCADE ON UPDATE CASCADE
+
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+  COMMENT='Hotel gallery images — supports multiple images per hotel';
+
+
+-- =============================================================================
+-- TABLE: audit_logs (Migration 013)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id           BIGINT         NOT NULL AUTO_INCREMENT,
+  admin_id     INT            NULL     COMMENT 'NULL for system-initiated actions',
+  action       VARCHAR(100)   NOT NULL COMMENT 'e.g. hotel_created, booking_status_changed',
+  entity_type  VARCHAR(60)    NOT NULL COMMENT 'e.g. hotel, booking, user, review',
+  entity_id    INT            NULL     COMMENT 'Primary key of the affected entity',
+  metadata     JSON           NULL     COMMENT 'Safe structured context — no passwords/secrets',
+  ip_address   VARCHAR(45)    NULL     COMMENT 'IPv4 or IPv6, trimmed',
+  created_at   TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  KEY idx_audit_admin_id    (admin_id),
+  KEY idx_audit_action      (action),
+  KEY idx_audit_entity      (entity_type, entity_id),
+  KEY idx_audit_created_at  (created_at),
+
+  CONSTRAINT fk_audit_admin
+    FOREIGN KEY (admin_id) REFERENCES users (id)
+    ON DELETE SET NULL ON UPDATE CASCADE
+
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+  COMMENT='Immutable audit trail — rows must never be updated or deleted by the application';
+
+
+-- =============================================================================
+-- TABLE: support_tickets (Migration 014 & 018)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS support_tickets (
+  id           INT            NOT NULL AUTO_INCREMENT,
+  user_id      INT            NULL     COMMENT 'NULL for unauthenticated submissions',
+  ticket_ref   VARCHAR(20)    NOT NULL COMMENT 'Unique human-readable reference e.g. TKT-20260727-A3F2',
+  name         VARCHAR(80)    NOT NULL,
+  email        VARCHAR(150)   NOT NULL,
+  subject      VARCHAR(120)   NOT NULL,
+  category     ENUM(
+                 'booking', 'payment', 'refund', 'technical',
+                 'complaint', 'other'
+               )              NOT NULL DEFAULT 'other',
+  message      TEXT           NOT NULL,
+  status       ENUM(
+                 'open', 'in_progress', 'resolved', 'closed'
+               )              NOT NULL DEFAULT 'open',
+  agent_notes  TEXT           NULL     COMMENT 'Internal — NEVER exposed to customers',
+  lookup_token_hash VARCHAR(64) NULL    COMMENT 'SHA-256 hash of high-entropy lookup token',
+  created_at   TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at   TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                        ON UPDATE CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  UNIQUE KEY  uq_support_ticket_ref  (ticket_ref),
+  UNIQUE KEY  uq_support_lookup_hash  (lookup_token_hash),
+  KEY         idx_support_user_id    (user_id),
+  KEY         idx_support_status     (status),
+  KEY         idx_support_created_at (created_at),
+
+  CONSTRAINT fk_support_user
+    FOREIGN KEY (user_id) REFERENCES users (id)
+    ON DELETE SET NULL ON UPDATE CASCADE
+
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+  COMMENT='Customer support tickets';
+
+
+-- =============================================================================
+-- TABLE: review_reports (Migration 016)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS review_reports (
+  id               INT            NOT NULL AUTO_INCREMENT,
+  review_id        INT            NOT NULL,
+  reporter_user_id INT            NOT NULL,
+  reason           VARCHAR(2000)  NOT NULL,
+  category         ENUM(
+                     'spam', 'offensive', 'fake', 'irrelevant', 'other'
+                   )              NOT NULL DEFAULT 'other',
+  status           ENUM(
+                     'pending', 'dismissed', 'actioned'
+                   )              NOT NULL DEFAULT 'pending',
+  created_at       TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at       TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                            ON UPDATE CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_review_report_pending (review_id, reporter_user_id, status),
+  KEY idx_review_reports_review_id  (review_id),
+  KEY idx_review_reports_reporter   (reporter_user_id),
+  KEY idx_review_reports_status     (status),
+
+  CONSTRAINT fk_review_reports_review
+    FOREIGN KEY (review_id) REFERENCES reviews (id)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+
+  CONSTRAINT fk_review_reports_reporter
+    FOREIGN KEY (reporter_user_id) REFERENCES users (id)
+    ON DELETE CASCADE ON UPDATE CASCADE
+
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+  COMMENT='User-submitted reports on individual reviews';
+
+
+-- =============================================================================
+-- TABLE: invoices (Migration 017)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS invoices (
+  id             INT          NOT NULL AUTO_INCREMENT,
+  booking_id     INT          NOT NULL,
+  invoice_number VARCHAR(30)  NOT NULL COMMENT 'e.g. INV-20260727-000001',
+  generated_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_invoices_booking_id     (booking_id),
+  UNIQUE KEY uq_invoices_invoice_number (invoice_number),
+
+  CONSTRAINT fk_invoices_booking
+    FOREIGN KEY (booking_id) REFERENCES bookings (id)
+    ON DELETE CASCADE ON UPDATE CASCADE
+
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+  COMMENT='Invoice number registry — PDFs are generated on demand, not stored here';
+
+
+-- =============================================================================
+-- TABLE: receipts (Migration 017)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS receipts (
+  id             INT          NOT NULL AUTO_INCREMENT,
+  booking_id     INT          NOT NULL,
+  receipt_number VARCHAR(30)  NOT NULL COMMENT 'e.g. RCT-20260727-000001',
+  generated_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_receipts_booking_id     (booking_id),
+  UNIQUE KEY uq_receipts_receipt_number (receipt_number),
+
+  CONSTRAINT fk_receipts_booking
+    FOREIGN KEY (booking_id) REFERENCES bookings (id)
+    ON DELETE CASCADE ON UPDATE CASCADE
+
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+  COMMENT='Receipt number registry — only created after confirmed payment';
+
+
+-- =============================================================================
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+  COMMENT='Tracks sent check-in reminders to prevent duplicates per booking';
+
+
+-- =============================================================================
+-- TABLE: hotel_images (Migration 011)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS hotel_images (
+  id           INT            NOT NULL AUTO_INCREMENT,
+  hotel_id     INT            NOT NULL,
+  storage_key  VARCHAR(512)   NOT NULL COMMENT 'Adapter-specific unique key (never original filename)',
+  url          VARCHAR(1024)  NOT NULL COMMENT 'Public URL served to clients',
+  alt_text     VARCHAR(255)   NOT NULL DEFAULT '' COMMENT 'Accessibility alt text',
+  sort_order   SMALLINT       NOT NULL DEFAULT 0,
+  is_cover     TINYINT(1)     NOT NULL DEFAULT 0,
+  created_at   TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  UNIQUE KEY  uq_hotel_images_storage_key (storage_key),
+  KEY         idx_hotel_images_hotel_id   (hotel_id),
+  KEY         idx_hotel_images_sort       (hotel_id, sort_order),
+
+  CONSTRAINT fk_hotel_images_hotel
+    FOREIGN KEY (hotel_id) REFERENCES hotels (id)
+    ON DELETE CASCADE ON UPDATE CASCADE
+
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+  COMMENT='Hotel gallery images — supports multiple images per hotel';
+
+
+-- =============================================================================
+-- TABLE: audit_logs (Migration 013)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id           BIGINT         NOT NULL AUTO_INCREMENT,
+  admin_id     INT            NULL     COMMENT 'NULL for system-initiated actions',
+  action       VARCHAR(100)   NOT NULL COMMENT 'e.g. hotel_created, booking_status_changed',
+  entity_type  VARCHAR(60)    NOT NULL COMMENT 'e.g. hotel, booking, user, review',
+  entity_id    INT            NULL     COMMENT 'Primary key of the affected entity',
+  metadata     JSON           NULL     COMMENT 'Safe structured context — no passwords/secrets',
+  ip_address   VARCHAR(45)    NULL     COMMENT 'IPv4 or IPv6, trimmed',
+  created_at   TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  KEY idx_audit_admin_id    (admin_id),
+  KEY idx_audit_action      (action),
+  KEY idx_audit_entity      (entity_type, entity_id),
+  KEY idx_audit_created_at  (created_at),
+
+  CONSTRAINT fk_audit_admin
+    FOREIGN KEY (admin_id) REFERENCES users (id)
+    ON DELETE SET NULL ON UPDATE CASCADE
+
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+  COMMENT='Immutable audit trail — rows must never be updated or deleted by the application';
+
+
+-- =============================================================================
+-- TABLE: support_tickets (Migration 014 & 018)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS support_tickets (
+  id           INT            NOT NULL AUTO_INCREMENT,
+  user_id      INT            NULL     COMMENT 'NULL for unauthenticated submissions',
+  ticket_ref   VARCHAR(20)    NOT NULL COMMENT 'Unique human-readable reference e.g. TKT-20260727-A3F2',
+  name         VARCHAR(80)    NOT NULL,
+  email        VARCHAR(150)   NOT NULL,
+  subject      VARCHAR(120)   NOT NULL,
+  category     ENUM(
+                 'booking', 'payment', 'refund', 'technical',
+                 'complaint', 'other'
+               )              NOT NULL DEFAULT 'other',
+  message      TEXT           NOT NULL,
+  status       ENUM(
+                 'open', 'in_progress', 'resolved', 'closed'
+               )              NOT NULL DEFAULT 'open',
+  agent_notes  TEXT           NULL     COMMENT 'Internal — NEVER exposed to customers',
+  lookup_token_hash VARCHAR(64) NULL    COMMENT 'SHA-256 hash of high-entropy lookup token',
+  created_at   TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at   TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                        ON UPDATE CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  UNIQUE KEY  uq_support_ticket_ref  (ticket_ref),
+  UNIQUE KEY  uq_support_lookup_hash  (lookup_token_hash),
+  KEY         idx_support_user_id    (user_id),
+  KEY         idx_support_status     (status),
+  KEY         idx_support_created_at (created_at),
+
+  CONSTRAINT fk_support_user
+    FOREIGN KEY (user_id) REFERENCES users (id)
+    ON DELETE SET NULL ON UPDATE CASCADE
+
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+  COMMENT='Customer support tickets';
+
+
+-- =============================================================================
+-- TABLE: review_reports (Migration 016)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS review_reports (
+  id               INT            NOT NULL AUTO_INCREMENT,
+  review_id        INT            NOT NULL,
+  reporter_user_id INT            NOT NULL,
+  reason           VARCHAR(2000)  NOT NULL,
+  category         ENUM(
+                     'spam', 'offensive', 'fake', 'irrelevant', 'other'
+                   )              NOT NULL DEFAULT 'other',
+  status           ENUM(
+                     'pending', 'dismissed', 'actioned'
+                   )              NOT NULL DEFAULT 'pending',
+  created_at       TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at       TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                            ON UPDATE CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_review_report_pending (review_id, reporter_user_id, status),
+  KEY idx_review_reports_review_id  (review_id),
+  KEY idx_review_reports_reporter   (reporter_user_id),
+  KEY idx_review_reports_status     (status),
+
+  CONSTRAINT fk_review_reports_review
+    FOREIGN KEY (review_id) REFERENCES reviews (id)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+
+  CONSTRAINT fk_review_reports_reporter
+    FOREIGN KEY (reporter_user_id) REFERENCES users (id)
+    ON DELETE CASCADE ON UPDATE CASCADE
+
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+  COMMENT='User-submitted reports on individual reviews';
+
+
+-- =============================================================================
+-- TABLE: invoices (Migration 017)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS invoices (
+  id             INT          NOT NULL AUTO_INCREMENT,
+  booking_id     INT          NOT NULL,
+  invoice_number VARCHAR(30)  NOT NULL COMMENT 'e.g. INV-20260727-000001',
+  generated_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_invoices_booking_id     (booking_id),
+  UNIQUE KEY uq_invoices_invoice_number (invoice_number),
+
+  CONSTRAINT fk_invoices_booking
+    FOREIGN KEY (booking_id) REFERENCES bookings (id)
+    ON DELETE CASCADE ON UPDATE CASCADE
+
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+  COMMENT='Invoice number registry — PDFs are generated on demand, not stored here';
+
+
+-- =============================================================================
+-- TABLE: receipts (Migration 017)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS receipts (
+  id             INT          NOT NULL AUTO_INCREMENT,
+  booking_id     INT          NOT NULL,
+  receipt_number VARCHAR(30)  NOT NULL COMMENT 'e.g. RCT-20260727-000001',
+  generated_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_receipts_booking_id     (booking_id),
+  UNIQUE KEY uq_receipts_receipt_number (receipt_number),
+
+  CONSTRAINT fk_receipts_booking
+    FOREIGN KEY (booking_id) REFERENCES bookings (id)
+    ON DELETE CASCADE ON UPDATE CASCADE
+
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+  COMMENT='Receipt number registry — only created after confirmed payment';
+
+
+-- =============================================================================
+-- TABLE: schema_migrations
+-- =============================================================================
+-- Seeded with 001 to 018 so migration runner knows this base schema is up to date.
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS schema_migrations (
+  migration_name VARCHAR(255) NOT NULL PRIMARY KEY,
+  applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO schema_migrations (migration_name) VALUES
+('001_add_account_security_fields.sql'),
+('002_add_booking_lifecycle.sql'),
+('003_ensure_account_security_fields.sql'),
+('004_add_email_outbox.sql'),
+('005_add_advanced_hotel_fields.sql'),
+('006_promo_codes.sql'),
+('007_enhance_refund_tracking.sql'),
+('008_add_promo_reserved_field.sql'),
+('009_notifications.sql'),
+('010_checkin_reminders.sql'),
+('011_hotel_images.sql'),
+('012_hotel_coordinates.sql'),
+('013_audit_log.sql'),
+('014_support_tickets.sql'),
+('015_user_deactivation.sql'),
+('016_review_enhancements.sql'),
+('017_invoices_receipts.sql'),
+('018_secure_support_lookup.sql');

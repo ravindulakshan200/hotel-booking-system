@@ -59,6 +59,15 @@ jobs:
           mysql -h 127.0.0.1 -u root --password=ci_root_password \
             hotel_booking_db < database/database.sql
 
+      - name: Run database migrations
+        run: node scripts/apply-migrations.js
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_USER: ci_user
+          DB_PASSWORD: ci_password
+          DB_NAME: hotel_booking_db
+
       - name: Run backend tests
         run: npm test
         env:
