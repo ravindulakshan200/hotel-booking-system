@@ -121,7 +121,7 @@ test.before(async () => {
     // Seed payment (unique transaction reference per run to avoid duplicate key collisions)
     await pool.query(
       `INSERT INTO payments (booking_id, amount, payment_method, payment_status, transaction_reference)
-       VALUES (?, 60000.00, 'stripe', 'completed', ?)`,
+       VALUES (?, 60000.00, 'card', 'completed', ?)`,
       [testBookingId, `pi_mock_phase7c_${runId}`]
     );
 
@@ -161,7 +161,7 @@ test.before(async () => {
     // Seed unrelated payment
     const [unrelatedPaymentRes] = await pool.query(
       `INSERT INTO payments (booking_id, amount, payment_method, payment_status, transaction_reference)
-       VALUES (?, 40000.00, 'stripe', 'completed', ?)`,
+       VALUES (?, 40000.00, 'card', 'completed', ?)`,
       [unrelatedBookingId, `pi_unrelated_${runId}`]
     );
     unrelatedPaymentId = unrelatedPaymentRes.insertId;
