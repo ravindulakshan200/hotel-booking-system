@@ -64,4 +64,3 @@ test("Database Schema Parity Tests", async (t) => {
 test.after(async () => {
   await pool.end();
 });
-
