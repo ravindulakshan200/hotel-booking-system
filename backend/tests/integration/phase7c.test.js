@@ -218,9 +218,9 @@ test.before(async () => {
     unrelatedImageStorageKey = `unrelated-surviving-image-${runId}.jpg`;
     fs.writeFileSync(path.join(uploadsDir, unrelatedImageStorageKey), 'unrelated-image-data-dummy');
     const [unrelatedImageRes] = await pool.query(
-      `INSERT INTO hotel_images (hotel_id, storage_key, is_cover, alt_text, sort_order)
-       VALUES (?, ?, 1, 'Unrelated Alt Text', 0)`,
-      [unrelatedHotelId, unrelatedImageStorageKey]
+      `INSERT INTO hotel_images (hotel_id, storage_key, url, is_cover, alt_text, sort_order)
+       VALUES (?, ?, ?, 1, 'Unrelated Alt Text', 0)`,
+      [unrelatedHotelId, unrelatedImageStorageKey, `/uploads/${unrelatedImageStorageKey}`]
     );
     unrelatedImageId = unrelatedImageRes.insertId;
 
