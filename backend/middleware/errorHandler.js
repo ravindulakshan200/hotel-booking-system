@@ -11,13 +11,21 @@
  */
 
 const errorHandler = (err, req, res, next) => {
+  let statusCode = err.statusCode || 500;
+  let message = err.message || "Internal Server Error";
+
   // Log full stack in development for easier debugging
   if (process.env.NODE_ENV === "development") {
     console.error("❌ Error:", err.stack);
+  } else if (process.env.NODE_ENV === "production" && statusCode >= 500) {
+    // Sanitized production error logging
+    console.error("❌ Production Error:", {
+      name: err.name,
+      code: err.code || "UNKNOWN_ERROR",
+      method: req.method,
+      path: req.path
+    });
   }
-
-  let statusCode = err.statusCode || 500;
-  let message = err.message || "Internal Server Error";
 
   if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
     statusCode = 400;
