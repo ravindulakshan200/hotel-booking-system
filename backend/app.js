@@ -63,9 +63,14 @@ const createApp = () => {
   // Configure STORAGE_ADAPTER=cloudinary or STORAGE_ADAPTER=s3 for production.
   const path = require('path');
   const fs   = require('fs');
-  const uploadsDir = path.resolve(__dirname, 'uploads');
-  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-  app.use('/uploads', express.static(uploadsDir));
+  const storageType = (process.env.STORAGE_ADAPTER || 'local').toLowerCase();
+  const isVercel = Boolean(process.env.VERCEL);
+
+  if (storageType === 'local' && !isVercel) {
+    const uploadsDir = path.resolve(__dirname, 'uploads');
+    if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+    app.use('/uploads', express.static(uploadsDir));
+  }
 
   app.use('/api/v1/health',         healthRoutes);
   app.use('/api/v1/auth',           authRoutes);

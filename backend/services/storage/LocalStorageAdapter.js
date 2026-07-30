@@ -18,10 +18,6 @@ const path = require('path');
 // Absolute path to the uploads directory (inside backend/)
 const UPLOADS_DIR = path.resolve(__dirname, '../../uploads');
 
-// Ensure uploads dir exists when module is loaded
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-}
 
 // Warn clearly in non-test environments
 if (process.env.NODE_ENV !== 'test') {
@@ -40,10 +36,19 @@ if (process.env.NODE_ENV !== 'test') {
  * @returns {Promise<{ url: string }>}
  */
 const upload = async (buffer, storageKey, mimetype) => {
+  if (Boolean(process.env.VERCEL)) {
+    const HttpError = require('../../utils/httpError');
+    throw new HttpError(503, 'Image uploads require cloud storage configuration.');
+  }
+
   // Safety: storageKey must be a plain filename, no path separators
   const safe = path.basename(storageKey);
   if (safe !== storageKey || storageKey.includes('..')) {
     throw new Error('Invalid storage key — path traversal detected.');
+  }
+
+  if (!fs.existsSync(UPLOADS_DIR)) {
+    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
   }
 
   const filePath = path.join(UPLOADS_DIR, safe);
@@ -59,6 +64,10 @@ const upload = async (buffer, storageKey, mimetype) => {
  * @param {string} storageKey
  */
 const deleteFile = async (storageKey) => {
+  if (Boolean(process.env.VERCEL)) {
+    const HttpError = require('../../utils/httpError');
+    throw new HttpError(503, 'Image uploads require cloud storage configuration.');
+  }
   const safe = path.basename(storageKey);
   const filePath = path.join(UPLOADS_DIR, safe);
   try {
