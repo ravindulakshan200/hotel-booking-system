@@ -14,7 +14,7 @@
 const express  = require("express");
 const router   = express.Router();
 
-const { register, login, logout, getProfile, updateProfile, changePassword } = require("../controllers/authController");
+const { register, login, logout, getProfile, updateProfile, changePassword, deactivateSelf } = require("../controllers/authController");
 const { forgotPassword, resetPassword, verifyEmail, resendVerification } = require("../controllers/accountRecoveryController");
 const { protect }                     = require("../middleware/authMiddleware");
 const { authLimiter, passwordResetLimiter, verificationLimiter } = require("../middleware/rateLimiters");
@@ -52,5 +52,8 @@ router.put("/profile", protect, updateProfile);
 
 // PUT /api/v1/auth/password
 router.put("/password", protect, changePassword);
+
+// POST /api/v1/auth/deactivate (password-confirmed self-deactivation)
+router.post("/deactivate", protect, deactivateSelf);
 
 module.exports = router;

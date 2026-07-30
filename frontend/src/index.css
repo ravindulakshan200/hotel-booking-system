@@ -226,3 +226,99 @@ label.form-label { font-weight: 600; color: var(--color-primary); margin-bottom:
 ::-webkit-scrollbar-track { background: #f1f5f9; }
 ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+/* ─── DARK THEME SYSTEM (Phase 7C) ─── */
+[data-theme='dark'] {
+  --color-primary: #f5f1e8;
+  --color-primary-light: #e6e0d4;
+  --color-bg: #091016;
+  --color-surface: #101c26;
+  --color-text: #e2e8f0;
+  --color-text-muted: #94a3b8;
+  --color-border: #1a2c3a;
+  --shadow-sm: 0 8px 24px rgba(0,0,0,0.3);
+  --shadow-md: 0 14px 35px rgba(0,0,0,0.35);
+  --shadow-lg: 0 24px 60px rgba(0,0,0,0.4);
+}
+
+[data-theme='dark'] body {
+  background:
+    radial-gradient(circle at top left, rgba(212,175,55,0.06), transparent 28%),
+    linear-gradient(135deg, #0a1219 0%, var(--color-bg) 45%, #080d12 100%);
+  color: var(--color-text);
+}
+
+[data-theme='dark'] .glass-card,
+[data-theme='dark'] .premium-card {
+  background: rgba(16, 28, 38, 0.85);
+  border-color: rgba(255,255,255,0.06);
+  box-shadow: var(--shadow-sm);
+}
+
+[data-theme='dark'] .review-card {
+  background: rgba(16, 28, 38, 0.6);
+}
+
+[data-theme='dark'] .form-control,
+[data-theme='dark'] .form-select {
+  background-color: rgba(9, 16, 22, 0.88);
+  color: var(--color-text);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme='dark'] .form-control:focus,
+[data-theme='dark'] .form-select:focus {
+  background-color: #101c26;
+  color: #fff;
+}
+
+[data-theme='dark'] h1,
+[data-theme='dark'] h2,
+[data-theme='dark'] h3,
+[data-theme='dark'] h4,
+[data-theme='dark'] h5,
+[data-theme='dark'] h6 {
+  color: var(--color-primary);
+}
+
+[data-theme='dark'] .btn-outline-primary {
+  color: var(--color-primary) !important;
+  border-color: rgba(255,255,255,0.12) !important;
+  background: rgba(16,28,38,0.7) !important;
+}
+
+[data-theme='dark'] .btn-outline-primary:hover {
+  background: rgba(16,28,38,0.92) !important;
+  color: var(--color-primary) !important;
+}
+
+[data-theme='dark'] .table {
+  color: var(--color-text);
+}
+
+[data-theme='dark'] .table-hover tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+[data-theme='dark'] .card {
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+[data-theme='dark'] .text-dark {
+  color: var(--color-text) !important;
+}
+
+[data-theme='dark'] .bg-light {
+  background-color: rgba(255, 255, 255, 0.02) !important;
+}
+
+[data-theme='dark'] .border-bottom {
+  border-bottom-color: var(--color-border) !important;
+}
+
+/* Ensure smooth theme transitions */
+*, *::before, *::after {
+  transition: background-color 220ms ease, border-color 220ms ease, color 220ms ease;
+}

@@ -157,6 +157,16 @@ const createRoom = async (req, res, next) => {
     const newRoomId = await Room.create({ hotel_id, room_number, room_type, price_per_night, capacity, availability_status, image_url });
     const newRoom = await Room.findById(newRoomId);
 
+    const AuditLog = require("../models/AuditLog");
+    await AuditLog.create({
+      adminId: req.user.id,
+      action: "room_created",
+      entityType: "room",
+      entityId: newRoomId,
+      metadata: { hotel_id, room_number, room_type },
+      ip: req.ip
+    });
+
     return res.status(201).json({
       success: true,
       message: "Room created successfully.",
@@ -217,6 +227,16 @@ const updateRoom = async (req, res, next) => {
     await Room.update(id, providedFields);
     const updatedRoom = await Room.findById(id);
 
+    const AuditLog = require("../models/AuditLog");
+    await AuditLog.create({
+      adminId: req.user.id,
+      action: "room_updated",
+      entityType: "room",
+      entityId: id,
+      metadata: { updated_fields: Object.keys(providedFields) },
+      ip: req.ip
+    });
+
     return res.status(200).json({
       success: true,
       message: "Room updated successfully.",
@@ -244,6 +264,16 @@ const deleteRoom = async (req, res, next) => {
 
     await Room.delete(id);
 
+    const AuditLog = require("../models/AuditLog");
+    await AuditLog.create({
+      adminId: req.user.id,
+      action: "room_deleted",
+      entityType: "room",
+      entityId: id,
+      metadata: { hotel_id: existing.hotel_id, room_number: existing.room_number },
+      ip: req.ip
+    });
+
     return res.status(200).json({
       success: true,
       message: "Room deleted successfully.",
@@ -267,6 +297,12 @@ const checkRoomAvailability = async (req, res, next) => {
 
     if (isNaN(roomId) || roomId < 1) {
       return res.status(400).json({ success: false, message: "Invalid room ID." });
+    }
+
+    // Forward to calendar availability if year or month is provided
+    if (req.query.year || req.query.month) {
+      const { getAvailability } = require('./availabilityController');
+      return getAvailability(req, res, next);
     }
 
     const room = await Room.findById(roomId);
@@ -317,6 +353,17 @@ const archiveRoom = async (req, res, next) => {
     if (existing.is_archived) return res.status(400).json({ success: false, message: "Room is already archived." });
 
     await Room.update(id, { is_archived: true });
+
+    const AuditLog = require("../models/AuditLog");
+    await AuditLog.create({
+      adminId: req.user.id,
+      action: "room_archived",
+      entityType: "room",
+      entityId: id,
+      metadata: { hotel_id: existing.hotel_id, room_number: existing.room_number },
+      ip: req.ip
+    });
+
     return res.status(200).json({ success: true, message: "Room archived successfully." });
   } catch (error) {
     next(error);
@@ -333,6 +380,17 @@ const unarchiveRoom = async (req, res, next) => {
     if (!existing.is_archived) return res.status(400).json({ success: false, message: "Room is not archived." });
 
     await Room.update(id, { is_archived: false });
+
+    const AuditLog = require("../models/AuditLog");
+    await AuditLog.create({
+      adminId: req.user.id,
+      action: "room_unarchived",
+      entityType: "room",
+      entityId: id,
+      metadata: { hotel_id: existing.hotel_id, room_number: existing.room_number },
+      ip: req.ip
+    });
+
     return res.status(200).json({ success: true, message: "Room unarchived successfully." });
   } catch (error) {
     next(error);

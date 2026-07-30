@@ -5,9 +5,18 @@ export const getDashboardStats = async (period = '30days') => {
   return response;
 };
 
-export const getAllUsers = async (role = '') => {
-  const url = role ? `/admin/users?role=${role}` : '/admin/users';
-  const response = await api.get(url);
+export const getAllUsers = async (params = '') => {
+  const response = await api.get(`/admin/users${params ? `?${params}` : ''}`);
+  return response;
+};
+
+export const deactivateUser = async (id, reason) => {
+  const response = await api.patch(`/admin/users/${id}/deactivate`, { reason });
+  return response;
+};
+
+export const reactivateUser = async (id) => {
+  const response = await api.patch(`/admin/users/${id}/reactivate`);
   return response;
 };
 
@@ -91,12 +100,27 @@ export const updateBookingRefund = async (id, data) => {
   return response;
 };
 
-export const getAllReviewsAdmin = async () => {
-  const response = await api.get('/reviews');
+export const getAllReviewsAdmin = async (params = '') => {
+  const response = await api.get(`/admin/reviews${params ? `?${params}` : ''}`);
   return response;
 };
 
 export const deleteReview = async (id) => {
-  const response = await api.delete(`/reviews/${id}`);
+  const response = await api.delete(`/admin/reviews/${id}`);
+  return response;
+};
+
+export const getReviewReports = async (params = '') => {
+  const response = await api.get(`/admin/reviews/reports${params ? `?${params}` : ''}`);
+  return response;
+};
+
+export const moderateReview = async (id, isHidden) => {
+  const response = await api.patch(`/admin/reviews/${id}/moderate`, { isHidden });
+  return response;
+};
+
+export const resolveReport = async (reportId, action) => {
+  const response = await api.patch(`/admin/reviews/reports/${reportId}/resolve`, { action });
   return response;
 };

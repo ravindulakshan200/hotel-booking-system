@@ -21,6 +21,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import VerifyEmail from './pages/VerifyEmail';
 import Notifications from './pages/Notifications';
+import Support from './pages/Support';
 
 // Lazy loaded Admin routes (optimization)
 const AdminDashboard = React.lazy(() => import('./pages/admin/AdminDashboard'));
@@ -30,6 +31,9 @@ const AdminBookings = React.lazy(() => import('./pages/admin/AdminBookings'));
 const AdminUsers = React.lazy(() => import('./pages/admin/AdminUsers'));
 const AdminPayments = React.lazy(() => import('./pages/admin/AdminPayments'));
 const AdminReviews = React.lazy(() => import('./pages/admin/AdminReviews'));
+const AdminSupport = React.lazy(() => import('./pages/admin/AdminSupport'));
+const AdminAuditLog = React.lazy(() => import('./pages/admin/AdminAuditLog'));
+const AdminReports = React.lazy(() => import('./pages/admin/AdminReports'));
 
 const AdminLoading = () => (
   <div
@@ -129,6 +133,7 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route path="/support" element={<Support />} />
               <Route
                 path="/admin"
                 element={
@@ -182,6 +187,30 @@ function App() {
                 element={
                   <ProtectedRoute adminOnly>
                     <AdminReviews />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/support"
+                element={
+                  <ProtectedRoute adminOnly>
+                    <AdminSupport />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/audit-logs"
+                element={
+                  <ProtectedRoute adminOnly>
+                    <AdminAuditLog />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/reports"
+                element={
+                  <ProtectedRoute adminOnly>
+                    <AdminReports />
                   </ProtectedRoute>
                 }
               />

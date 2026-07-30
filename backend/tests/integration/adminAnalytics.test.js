@@ -25,10 +25,10 @@ test.before(async () => {
     queryCalls.push({ sql: s, params });
 
     // Mock user fetching for Auth Middleware
-    if (s.includes("SELECT id, first_name, last_name, email, phone, role, created_at, email_verified_at, password_changed_at FROM users WHERE id = ?")) {
+    if (s.includes("SELECT id, first_name, last_name, email, phone, role,") && s.includes("is_active") && s.includes("WHERE id = ?")) {
       const id = params[0];
-      if (id === 1) return [[{ id: 1, role: "admin", email_verified_at: "2025-01-01" }]];
-      if (id === 2) return [[{ id: 2, role: "customer", email_verified_at: "2025-01-01" }]];
+      if (id === 1) return [[{ id: 1, role: "admin", email_verified_at: "2025-01-01", is_active: 1, password_changed_at: null }]];
+      if (id === 2) return [[{ id: 2, role: "customer", email_verified_at: "2025-01-01", is_active: 1, password_changed_at: null }]];
       return [[]];
     }
 

@@ -4,6 +4,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import { getHotels } from '../../services/hotelService';
 import { getAllRooms, createRoom, updateRoom, deleteRoom, archiveRoom, unarchiveRoom } from '../../services/adminService';
 import { formatCurrency } from '../../utils/formatters';
+import Pagination from '../../components/Pagination';
 
 const emptyForm = {
   hotel_id: '', room_number: '', room_type: 'single',
@@ -21,11 +22,26 @@ const AdminRooms = () => {
   const [saving, setSaving] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
-  const fetchData = async () => {
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total_pages: 1 });
+
+  const fetchRooms = async (page = 1) => {
     try {
-      const [roomsRes, hotelsRes] = await Promise.all([getAllRooms(), getHotels()]);
-      setRooms(roomsRes.data?.data?.rooms || []);
-      setHotels(hotelsRes.data?.data?.hotels || []);
+      setLoading(true);
+      const params = new URLSearchParams({
+        page,
+        limit: pagination.limit,
+        paginate: 'true'
+      });
+      const response = await getAllRooms(params.toString());
+      const data = response.data?.data;
+      if (data) {
+        setRooms(data.items || data.rooms || []);
+        setPagination({
+          page: data.page || 1,
+          limit: data.limit || 10,
+          total_pages: data.total_pages || 1,
+        });
+      }
     } catch (err) {
       setError('Failed to load rooms.');
     } finally {
@@ -33,7 +49,19 @@ const AdminRooms = () => {
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  const fetchHotels = async () => {
+    try {
+      const response = await getHotels();
+      setHotels(response.data?.data?.hotels || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    fetchHotels();
+    fetchRooms(1);
+  }, []);
 
   const getHotelName = (hotelId) => hotels.find((h) => h.id === hotelId)?.name || `#${hotelId}`;
 
@@ -65,7 +93,7 @@ const AdminRooms = () => {
         await createRoom(payload);
       }
       setShowModal(false);
-      fetchData();
+      fetchRooms(pagination.page);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to save room.');
     } finally {
@@ -80,7 +108,7 @@ const AdminRooms = () => {
   const handleConfirmDelete = async (id) => {
     try {
       await deleteRoom(id);
-      fetchData();
+      fetchRooms(pagination.page);
       setConfirmDeleteId(null);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to delete room.');
@@ -95,7 +123,7 @@ const AdminRooms = () => {
       } else {
         await archiveRoom(id);
       }
-      fetchData();
+      fetchRooms(pagination.page);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to toggle archive status.');
     }
@@ -146,6 +174,13 @@ const AdminRooms = () => {
               </tbody>
             </table>
           </div>
+          {!loading && pagination.total_pages > 1 && (
+            <Pagination
+              page={pagination.page}
+              totalPages={pagination.total_pages}
+              onPageChange={(p) => fetchRooms(p)}
+            />
+          )}
         </div>
       )}
 

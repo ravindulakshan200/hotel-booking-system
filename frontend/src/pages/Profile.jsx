@@ -4,7 +4,7 @@ import { updateProfile, changePassword } from '../services/profileService';
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
-  
+
   const [profileData, setProfileData] = useState({
     first_name: user?.first_name || '',
     last_name: user?.last_name || '',
@@ -53,9 +53,9 @@ const Profile = () => {
     setPasswordLoading(true);
     setPasswordMessage({ type: '', text: '' });
     try {
-      await changePassword({ 
-        currentPassword: passwordData.currentPassword, 
-        newPassword: passwordData.newPassword 
+      await changePassword({
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword
       });
       setPasswordMessage({ type: 'success', text: 'Password changed successfully!' });
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
@@ -132,6 +132,56 @@ const Profile = () => {
               <button type="submit" className="btn btn-outline-primary px-4" disabled={passwordLoading}>
                 {passwordLoading ? <span className="spinner-border spinner-border-sm me-2"></span> : 'Change Password'}
               </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      {/* Account Deactivation Section */}
+      <div className="row mt-4">
+        <div className="col-12">
+          <div className="card border-danger p-4 shadow-sm bg-danger-subtle bg-opacity-10">
+            <h4 className="fw-bold text-danger mb-3"><i className="bi bi-exclamation-triangle-fill me-2"></i>Deactivate Account</h4>
+            <p className="text-muted">Deactivating your account will disable your profile and log you out. You will not be able to log in or manage bookings unless you contact support to reactivate your account.</p>
+
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              const password = e.target.deactivatePassword.value;
+              if (!password) return;
+              if (!window.confirm('Are you absolutely sure you want to deactivate your account? This will log you out immediately.')) return;
+
+              try {
+                const res = await fetch('/api/v1/auth/deactivate', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ password }),
+                });
+                const body = await res.json();
+                if (res.status === 200) {
+                  alert('Your account has been deactivated. You will now be redirected.');
+                  localStorage.removeItem('user');
+                  window.location.href = '/login';
+                } else {
+                  alert(body.message || 'Deactivation failed.');
+                }
+              } catch (err) {
+                alert('Network error during deactivation.');
+              }
+            }} className="row g-3 align-items-center">
+              <div className="col-sm-5">
+                <input
+                  type="password"
+                  name="deactivatePassword"
+                  className="form-control"
+                  placeholder="Enter your current password to confirm"
+                  required
+                />
+              </div>
+              <div className="col-sm-4">
+                <button type="submit" className="btn btn-danger rounded-pill w-100">
+                  Deactivate My Account
+                </button>
+              </div>
             </form>
           </div>
         </div>

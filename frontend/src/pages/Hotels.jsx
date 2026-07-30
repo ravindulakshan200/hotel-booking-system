@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { getHotels, searchAvailability } from '../services/hotelService';
 import { formatCurrency } from '../utils/formatters';
+import Pagination from '../components/Pagination';
 
 const SL_CITIES = ['Colombo', 'Kandy', 'Galle', 'Ella', 'Nuwara Eliya', 'Bentota', 'Mirissa', 'Sigiriya', 'Negombo', 'Anuradhapura'];
 
@@ -31,30 +32,52 @@ const Hotels = () => {
   const [maxPrice, setMaxPrice] = useState(searchParams.get('max_price') || '');
   const [sort, setSort] = useState(searchParams.get('sort') || '');
 
+  const [pagination, setPagination] = useState({ page: 1, limit: 9, total_pages: 1 });
+
   const fetchHotels = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const params = Object.fromEntries(searchParams.entries());
+      const queryParams = {
+        ...params,
+        page: params.page || 1,
+        limit: pagination.limit,
+        paginate: 'true'
+      };
+
       let response;
-      if (params.check_in && params.check_out && params.guests) {
-        response = await searchAvailability(params);
+      if (queryParams.check_in && queryParams.check_out && queryParams.guests) {
+        response = await searchAvailability(queryParams);
       } else {
-        // Drop any filters that getHotels doesn't support if we fall back
-        const basicParams = { city: params.city, search: params.search };
-        response = await getHotels(basicParams);
+        response = await getHotels(queryParams);
       }
-      setHotels(response.data?.data?.hotels || []);
+
+      const data = response.data?.data;
+      if (data) {
+        setHotels(data.items || data.hotels || []);
+        setPagination({
+          page: data.page || 1,
+          limit: data.limit || 9,
+          total_pages: data.total_pages || 1,
+        });
+      }
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to fetch hotels. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, [searchParams]);
+  }, [searchParams, pagination.limit]);
 
   useEffect(() => {
     fetchHotels();
   }, [fetchHotels]);
+
+  const handlePageChange = (newPage) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('page', newPage);
+    setSearchParams(params);
+  };
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -279,7 +302,14 @@ const Hotels = () => {
                         </div>
                     </div>
                     ))}
-                </div>
+                    {!loading && pagination.total_pages > 1 && (
+                      <Pagination
+                        page={pagination.page}
+                        totalPages={pagination.total_pages}
+                        onPageChange={handlePageChange}
+                      />
+                    )}
+                  </div>
                 )}
             </div>
         </div>

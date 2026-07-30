@@ -72,6 +72,14 @@ const protect = async (req, res, next) => {
       });
     }
 
+    // ── 4b. Check account is active (deactivation guard) ─────────────────────
+    if (user.is_active === 0 || user.is_active === false) {
+      return res.status(401).json({
+        success: false,
+        message: "Your account has been deactivated. Please contact support if you believe this is an error.",
+      });
+    }
+
     // ── 4. Attach user to the request object and continue ───────────────────
     req.user = user;
     next();

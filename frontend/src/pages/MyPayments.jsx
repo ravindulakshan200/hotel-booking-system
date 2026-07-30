@@ -56,7 +56,8 @@ const MyPayments = () => {
                   <th className="py-3">Booking Details</th>
                   <th className="py-3">Method</th>
                   <th className="py-3">Amount (LKR)</th>
-                  <th className="px-4 py-3">Status</th>
+                  <th className="py-3">Status</th>
+                  <th className="px-4 py-3 text-end">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -72,10 +73,23 @@ const MyPayments = () => {
                     </td>
                     <td className="text-capitalize">{payment.payment_method}</td>
                     <td className="fw-bold text-primary">{formatCurrency(payment.amount)}</td>
-                    <td className="px-4">
+                    <td>
                       <span className={`status-badge ${payment.payment_status === 'completed' ? 'success' : payment.payment_status === 'refunded' ? 'secondary' : 'warning'}`}>
                         {payment.payment_status}
                       </span>
+                    </td>
+                    <td className="px-4 text-end">
+                      {payment.payment_status === 'completed' && (
+                        <a
+                          href={`/api/v1/bookings/${payment.booking_id}/receipt.pdf`}
+                          download={`receipt-${payment.booking_id}.pdf`}
+                          className="btn btn-sm btn-outline-success rounded-pill px-3"
+                          style={{ fontSize: '0.74rem' }}
+                          title="Download Receipt PDF"
+                        >
+                          <i className="bi bi-receipt me-1"></i>Receipt
+                        </a>
+                      )}
                     </td>
                   </tr>
                 ))}
