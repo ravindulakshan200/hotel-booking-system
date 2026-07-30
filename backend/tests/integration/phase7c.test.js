@@ -506,7 +506,17 @@ test("Phase 7C Integration Test Suite", async (t) => {
       const { items } = await AuditLog.findAll({ action: uniqueAction }, 1, 10);
       const filtered = items.filter(item => item.action === uniqueAction);
       assert.ok(filtered.length > 0);
-      const parsedMeta = JSON.parse(filtered[0].metadata);
+      const rawMetadata = filtered[0].metadata;
+      const parsedMeta =
+        typeof rawMetadata === 'string'
+          ? JSON.parse(rawMetadata)
+          : rawMetadata;
+
+      assert.ok(
+        parsedMeta &&
+        typeof parsedMeta === 'object' &&
+        !Array.isArray(parsedMeta)
+      );
 
       assert.equal(parsedMeta.password, undefined);
       assert.equal(parsedMeta.jwt, undefined);
