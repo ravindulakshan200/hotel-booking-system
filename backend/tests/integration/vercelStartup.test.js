@@ -18,7 +18,7 @@ test("Vercel Startup and Storage Regression Test Suite", async (t) => {
   let testImageKey;
 
   const StorageAdapter = require('../../services/storage/StorageAdapter');
-  
+
   t.after(async () => {
     if (server) {
       if (server.closeAllConnections) server.closeAllConnections();
@@ -43,7 +43,7 @@ test("Vercel Startup and Storage Regression Test Suite", async (t) => {
 
     if (originalVercel !== undefined) process.env.VERCEL = originalVercel;
     else delete process.env.VERCEL;
-    
+
     if (originalStorage !== undefined) process.env.STORAGE_ADAPTER = originalStorage;
     else delete process.env.STORAGE_ADAPTER;
 
@@ -52,9 +52,9 @@ test("Vercel Startup and Storage Regression Test Suite", async (t) => {
 
     if (originalJwtSecret !== undefined) process.env.JWT_SECRET = originalJwtSecret;
     else delete process.env.JWT_SECRET;
-    
+
     StorageAdapter.resetAdapter();
-    
+
     // Close the database pool to allow the process to exit
     try {
       const pool = require('../../config/db');
@@ -70,7 +70,7 @@ test("Vercel Startup and Storage Regression Test Suite", async (t) => {
 
     const createApp = require('../../app');
     const LocalStorageAdapter = require('../../services/storage/LocalStorageAdapter');
-    
+
     StorageAdapter.resetAdapter();
     adapter = StorageAdapter.getAdapter();
     assert.strictEqual(adapter, LocalStorageAdapter);
@@ -78,7 +78,7 @@ test("Vercel Startup and Storage Regression Test Suite", async (t) => {
     const app = createApp();
     server = http.createServer(app);
     await new Promise(resolve => server.listen(0, resolve));
-    
+
     const port = server.address().port;
     const res = await fetch(`http://localhost:${port}/api/v1/health`);
     assert.strictEqual(res.status, 200);
@@ -110,14 +110,14 @@ test("Vercel Startup and Storage Regression Test Suite", async (t) => {
     process.env.STORAGE_ADAPTER = "local";
 
     const uploadsDir = path.resolve(__dirname, '../../uploads');
-    
+
     const createApp = require('../../app');
-    const app = createApp(); 
+    const app = createApp();
     assert.ok(fs.existsSync(uploadsDir), "Local mode should create uploads dir in app.js");
 
     StorageAdapter.resetAdapter();
     adapter = StorageAdapter.getAdapter();
-    
+
     testImageKey = "test_lazy.jpg";
     const result = await adapter.upload(Buffer.from("fake"), testImageKey, "image/jpeg");
     assert.strictEqual(result.url, `/uploads/${testImageKey}`);
@@ -126,17 +126,17 @@ test("Vercel Startup and Storage Regression Test Suite", async (t) => {
     await adapter.delete(testImageKey);
     assert.strictEqual(fs.existsSync(path.join(uploadsDir, testImageKey)), false);
   });
-  
+
   await t.test("Cloud adapter selection works without making calls", async () => {
     process.env.VERCEL = "1";
     const { ConfigurationError } = require('../../services/storage/CloudStorageAdapter');
-    
+
     process.env.STORAGE_ADAPTER = "cloudinary";
     StorageAdapter.resetAdapter();
     assert.throws(() => {
       StorageAdapter.getAdapter();
     }, ConfigurationError, "Should attempt to load cloudinary and throw ConfigurationError due to missing config");
-    
+
     process.env.STORAGE_ADAPTER = "s3";
     StorageAdapter.resetAdapter();
     assert.throws(() => {
