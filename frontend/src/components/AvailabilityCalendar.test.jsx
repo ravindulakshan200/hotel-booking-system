@@ -8,6 +8,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -32,15 +33,10 @@ test('renders header and handles fetch lifecycle', async () => {
 });
 
 test('disables busy and past dates', async () => {
-  // Let's create dates dynamically
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth() + 1;
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-08-10T12:00:00.000Z'));
 
-  // Booked date: today + 2 days
-  const bookedDate = new Date(today);
-  bookedDate.setDate(today.getDate() + 2);
-  const bookedDateStr = bookedDate.toISOString().slice(0, 10);
+  const bookedDateStr = '2026-08-12';
 
   global.fetch.mockResolvedValue({
     json: () => Promise.resolve({
@@ -56,16 +52,10 @@ test('disables busy and past dates', async () => {
   });
 
   // Check that the booked date button is disabled
-  // The button's label contains "is already booked"
-  const dayStr = bookedDate.getDate().toString();
-  const dayButtons = screen.getAllByRole('button');
-  const bookedBtn = dayButtons.find(btn => btn.getAttribute('aria-label')?.includes('is already booked'));
-  expect(bookedBtn).toBeDefined();
+  const bookedBtn = await screen.findByRole('button', { name: /is already booked/i });
   expect(bookedBtn).toBeDisabled();
 
   // Yesterday should be disabled/past
-  const yesterdayBtn = dayButtons.find(btn => btn.getAttribute('aria-label')?.includes('is in the past'));
-  if (yesterdayBtn) {
-    expect(yesterdayBtn).toBeDisabled();
-  }
+  const pastBtns = await screen.findAllByRole('button', { name: /is in the past/i });
+  expect(pastBtns[0]).toBeDisabled();
 });
