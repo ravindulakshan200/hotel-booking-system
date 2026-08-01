@@ -48,16 +48,38 @@ async function run() {
         const filePath = path.join(migrationsDir, file);
         const sqlContent = fs.readFileSync(filePath, 'utf8');
 
-        // Strip single-line comments
-        const cleanSql = sqlContent.replace(/--.*$/gm, '');
+        // Support DELIMITER and safely ignore "already exists" errors
+        let currentDelimiter = ';';
+        const queries = [];
+        let currentQuery = '';
 
-        // Split queries by semicolon followed by newline
-        const queries = cleanSql
-          .split(/;\r?\n|;\n/)
-          .map(q => q.trim())
-          .filter(q => q.length > 0);
+        const lines = sqlContent.split(/\r?\n/);
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('--')) continue;
 
-        // Execute each query. Do not capture/suppress duplicate errors.
+          if (trimmed.toUpperCase().startsWith('DELIMITER ')) {
+            currentDelimiter = trimmed.substring(10).trim();
+            continue;
+          }
+
+          currentQuery += line + '\n';
+
+          if (trimmed.endsWith(currentDelimiter)) {
+            let q = currentQuery.trim();
+            q = q.substring(0, q.length - currentDelimiter.length);
+            if (q.trim().length > 0) {
+              queries.push(q.trim());
+            }
+            currentQuery = '';
+          }
+        }
+
+        if (currentQuery.trim().length > 0) {
+           queries.push(currentQuery.trim());
+        }
+
+        // Execute each query. We DO NOT suppress duplicate errors. Migrations must be perfectly idempotent.
         for (let query of queries) {
           await connection.query(query);
         }
