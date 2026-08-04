@@ -32,7 +32,7 @@ const resendVerification = async (req, res, next) => {
 
     try {
       const EmailOutbox = require("../models/EmailOutbox");
-      await EmailOutbox.enqueueEmailEvent(null, {
+      const eventId = await EmailOutbox.enqueueEmailEvent(null, {
         eventKey: `email_verification_${user.id}_${Date.now()}`,
         eventType: 'email_verification_requested',
         recipientUserId: user.id,
@@ -41,6 +41,8 @@ const resendVerification = async (req, res, next) => {
         },
         expiresAt
       });
+      const emailWorker = require("../services/emailWorker");
+      await emailWorker.processImmediate(eventId);
     } catch (err) {
       console.error("Failed to enqueue resend verification:", err.message);
     }
@@ -112,7 +114,7 @@ const forgotPassword = async (req, res, next) => {
 
     try {
       const EmailOutbox = require("../models/EmailOutbox");
-      await EmailOutbox.enqueueEmailEvent(null, {
+      const eventId = await EmailOutbox.enqueueEmailEvent(null, {
         eventKey: `password_reset_${user.id}_${Date.now()}`,
         eventType: 'password_reset_requested',
         recipientUserId: user.id,
@@ -121,6 +123,8 @@ const forgotPassword = async (req, res, next) => {
         },
         expiresAt
       });
+      const emailWorker = require("../services/emailWorker");
+      await emailWorker.processImmediate(eventId);
     } catch (err) {
       console.error("Failed to enqueue password reset:", err.message);
     }
