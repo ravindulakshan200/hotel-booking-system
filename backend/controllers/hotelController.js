@@ -143,6 +143,24 @@ const getAllHotels = async (req, res, next) => {
       });
     }
 
+    // Hotel.findAll returns { rows, total, page, limit } when page or limit is
+    // supplied without the paginate flag. Expose count = total (all matching
+    // records) and hotels = the page-limited slice so that callers that send
+    // ?page=1&limit=5 receive exactly 5 objects without breaking consumers that
+    // already rely on data.count and data.hotels.
+    if (result && !Array.isArray(result) && result.rows !== undefined) {
+      return res.status(200).json({
+        success: true,
+        message: result.rows.length > 0 ? "Hotels fetched successfully." : "No hotels found.",
+        data: {
+          count: result.total,
+          hotels: result.rows,
+          page: result.page,
+          limit: result.limit,
+        },
+      });
+    }
+
     return res.status(200).json({
       success: true,
       message: result.length > 0 ? "Hotels fetched successfully." : "No hotels found.",

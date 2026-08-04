@@ -16,7 +16,8 @@ const Hotel = {
    * @param {object}  [filters={}]
    * @param {string}  [filters.city]    — exact city match (case-insensitive)
    * @param {string}  [filters.search]  — partial name / city / address match
-   * @returns {Promise<object[]>}       — array of hotel rows
+   * @param {object}  [queryParams={}]  — req.query; supports page, limit, paginate
+   * @returns {Promise<object[]|object>} — array of hotel rows, or paginated envelope
    */
   findAll: async (filters = {}, queryParams = {}) => {
     const conditions = [];
@@ -38,19 +39,38 @@ const Hotel = {
     const where = conditions.length > 0 ? " WHERE " + conditions.join(" AND ") : "";
     const orderBy = " ORDER BY created_at DESC, id DESC";
 
-    // Return all (no pagination) when paginate flag not set — backward compat
-    if (!queryParams.paginate) {
-      const [rows] = await pool.query(`SELECT * FROM hotels${where}${orderBy}`, params);
-      return rows.map(parseAmenities);
+    // Explicit paginated envelope requested — return items/page/total_pages shape.
+    if (queryParams.paginate) {
+      const { page, limit, offset } = parsePagination(queryParams);
+      const [[{ total }]] = await pool.query(`SELECT COUNT(*) AS total FROM hotels${where}`, params);
+      const [rows] = await pool.query(
+        `SELECT * FROM hotels${where}${orderBy} LIMIT ? OFFSET ?`,
+        [...params, limit, offset]
+      );
+      return buildPaginatedResponse(rows.map(parseAmenities), total, page, limit);
     }
 
-    const { page, limit, offset } = parsePagination(queryParams);
-    const [[{ total }]] = await pool.query(`SELECT COUNT(*) AS total FROM hotels${where}`, params);
-    const [rows] = await pool.query(
-      `SELECT * FROM hotels${where}${orderBy} LIMIT ? OFFSET ?`,
-      [...params, limit, offset]
-    );
-    return buildPaginatedResponse(rows.map(parseAmenities), total, page, limit);
+    // When page or limit is supplied (but paginate flag is absent), apply LIMIT/OFFSET
+    // so that ?page=N&limit=M is always honoured. The response shape stays the
+    // backward-compatible { count, hotels } envelope handled by the controller.
+    const hasPageOrLimit =
+      (queryParams.page !== undefined && queryParams.page !== null && queryParams.page !== '') ||
+      (queryParams.limit !== undefined && queryParams.limit !== null && queryParams.limit !== '');
+
+    if (hasPageOrLimit) {
+      const { page, limit, offset } = parsePagination(queryParams);
+      const [[{ total }]] = await pool.query(`SELECT COUNT(*) AS total FROM hotels${where}`, params);
+      const [rows] = await pool.query(
+        `SELECT * FROM hotels${where}${orderBy} LIMIT ? OFFSET ?`,
+        [...params, limit, offset]
+      );
+      // Return a plain object so the controller can spread count/hotels as before.
+      return { rows: rows.map(parseAmenities), total, page, limit };
+    }
+
+    // Default: return all rows (no pagination) — backward compatible.
+    const [rows] = await pool.query(`SELECT * FROM hotels${where}${orderBy}`, params);
+    return rows.map(parseAmenities);
   },
 
   /**
