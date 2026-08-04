@@ -73,7 +73,7 @@ const register = async (req, res, next) => {
 
     try {
       const EmailOutbox = require("../models/EmailOutbox");
-      await EmailOutbox.enqueueEmailEvent(null, {
+      const eventId = await EmailOutbox.enqueueEmailEvent(null, {
         eventKey: `email_verification_${newUserId}_${Date.now()}`,
         eventType: 'email_verification_requested',
         recipientUserId: newUserId,
@@ -82,6 +82,8 @@ const register = async (req, res, next) => {
         },
         expiresAt
       });
+      const emailWorker = require("../services/emailWorker");
+      await emailWorker.processImmediate(eventId);
     } catch (err) {
       console.error("Failed to enqueue email_verification_requested:", err.message);
     }

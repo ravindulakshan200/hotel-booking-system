@@ -55,6 +55,27 @@ const EmailOutbox = {
     return rows;
   },
 
+  claimSingleEvent: async (id, workerId) => {
+    const [updateResult] = await pool.query(
+      `UPDATE email_outbox
+       SET status = 'processing', locked_at = NOW(), locked_by = ?
+       WHERE id = ? AND status IN ('pending', 'failed')
+         AND next_attempt_at <= NOW()`,
+      [workerId, id]
+    );
+
+    if (updateResult.affectedRows === 0) {
+      return null;
+    }
+
+    const [rows] = await pool.query(
+      `SELECT * FROM email_outbox WHERE id = ? AND locked_by = ? AND status = 'processing'`,
+      [id, workerId]
+    );
+
+    return rows.length > 0 ? rows[0] : null;
+  },
+
   markSent: async (id) => {
     // Clear the payload to remove any sensitive tokens from being stored permanently
     await pool.query(

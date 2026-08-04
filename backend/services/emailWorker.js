@@ -1,6 +1,6 @@
 const { randomUUID } = require("crypto");
 const EmailOutbox = require("../models/EmailOutbox");
-const { processEmailEvent } = require("./emailService");
+const emailService = require("./emailService");
 
 class EmailWorker {
   constructor() {
@@ -44,49 +44,76 @@ class EmailWorker {
 
       for (const event of events) {
         if (this.isShuttingDown) break;
-
-        try {
-          if (event.payload_expires_at && new Date(event.payload_expires_at) < new Date()) {
-             await this.handleFailure(event, "Event payload expired before delivery.", true);
-             continue;
-          }
-
-          let decryptedPayload = {};
-          try {
-            decryptedPayload = decryptPayload(event.payload, event.event_key);
-          } catch (decErr) {
-            await this.handleFailure(event, `Decryption failed: ${decErr.message}`, true);
-            continue;
-          }
-
-          if (event.recipient_user_id) {
-            const [users] = await pool.query("SELECT email, first_name FROM users WHERE id = ?", [event.recipient_user_id]);
-            if (users.length > 0) {
-              event.recipient_email = users[0].email;
-              if (decryptedPayload) {
-                 decryptedPayload.userName = decryptedPayload.userName || users[0].first_name;
-              }
-            }
-          }
-
-          const processedEvent = {
-            ...event,
-            payload: decryptedPayload
-          };
-
-          const success = await processEmailEvent(processedEvent);
-          if (success) {
-            await EmailOutbox.markSent(event.id);
-          } else {
-            await this.handleFailure(event, "Provider returned false");
-          }
-        } catch (error) {
-          await this.handleFailure(event, error.message);
-        }
+        await this.processEvent(event);
       }
     } catch (error) {
       console.error("[EmailWorker] Batch processing error:", error.message);
     }
+  }
+
+  async processImmediate(eventId) {
+    try {
+      const event = await EmailOutbox.claimSingleEvent(eventId, this.workerId);
+      if (!event) return false;
+      return await this.processEvent(event);
+    } catch (error) {
+      console.error("[EmailWorker] Immediate processing error:", error.message);
+      return false;
+    }
+  }
+
+  async processEvent(event) {
+    try {
+      const { decryptPayload } = require("../utils/encryption");
+      const pool = require("../config/db");
+        if (event.payload_expires_at && new Date(event.payload_expires_at) < new Date()) {
+           await this.handleFailure(event, "Event payload expired before delivery.", true);
+           return false;
+        }
+
+        let decryptedPayload = {};
+        try {
+          let parsedPayload = event.payload;
+          while (typeof parsedPayload === 'string') {
+            try {
+              const next = JSON.parse(parsedPayload);
+              if (typeof next === 'string' && next === parsedPayload) break;
+              parsedPayload = next;
+            } catch(e) { break; }
+          }
+          decryptedPayload = decryptPayload(parsedPayload, event.event_key);
+        } catch (decErr) {
+          await this.handleFailure(event, `Decryption failed: ${decErr.message}`, true);
+          return false;
+        }
+
+        if (event.recipient_user_id) {
+          const [users] = await pool.query("SELECT email, first_name FROM users WHERE id = ?", [event.recipient_user_id]);
+          if (users.length > 0) {
+            event.recipient_email = users[0].email;
+            if (decryptedPayload) {
+               decryptedPayload.userName = decryptedPayload.userName || users[0].first_name;
+            }
+          }
+        }
+
+        const processedEvent = {
+          ...event,
+          payload: decryptedPayload
+        };
+
+        const success = await emailService.processEmailEvent(processedEvent);
+        if (success) {
+          await EmailOutbox.markSent(event.id);
+          return true;
+        } else {
+          await this.handleFailure(event, "Provider returned false");
+          return false;
+        }
+      } catch (error) {
+        await this.handleFailure(event, error.message);
+        return false;
+      }
   }
 
   async handleFailure(event, errorMessage, forceDeadLetter = false) {
