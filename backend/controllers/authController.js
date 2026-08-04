@@ -23,6 +23,7 @@ const {
   validatePasswordChangeInput,
 } = require("../utils/validators");
 const { generateTokenAndHash } = require("./accountRecoveryController");
+const crypto = require("crypto");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // REGISTER
@@ -163,12 +164,20 @@ const login = async (req, res, next) => {
     const { password: _pw, ...safeUser } = user;
 
     // ── 6. Set cookie ────────────────────────────────────────────────────────
-    res.cookie("jwt", token, {
+    const isProd = process.env.NODE_ENV === "production";
+    const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: isProd,
+      sameSite: isProd ? "none" : "lax",
+      path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    };
+
+    res.cookie("jwt", token, cookieOptions);
+
+    // Generate CSRF token on login if they don't have one, or just rotate it
+    const csrfToken = crypto.randomBytes(32).toString("hex");
+    res.cookie("csrfToken", csrfToken, cookieOptions);
 
     // ── 7. Respond ───────────────────────────────────────────────────────────
     return res.status(200).json({
@@ -176,6 +185,7 @@ const login = async (req, res, next) => {
       message: "Login successful.",
       data: {
         user: safeUser,
+        csrfToken
       },
     });
 
@@ -184,19 +194,42 @@ const login = async (req, res, next) => {
   }
 };
 
-/**
- * @desc    Log out user / clear cookie
- * @route   POST /api/v1/auth/logout
- * @access  Public
- */
 const logout = async (req, res, next) => {
-  res.cookie("jwt", "", {
+  const isProd = process.env.NODE_ENV === "production";
+  const clearCookieOptions = {
     httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? "none" : "lax",
+    path: "/",
     expires: new Date(0),
-  });
+  };
+  res.cookie("jwt", "", clearCookieOptions);
+  res.cookie("csrfToken", "", clearCookieOptions);
   return res.status(200).json({
     success: true,
     message: "Logged out successfully.",
+  });
+};
+
+/**
+ * @desc    Get CSRF Token
+ * @route   GET /api/v1/auth/csrf-token
+ * @access  Public
+ */
+const getCsrfToken = (req, res, next) => {
+  const csrfToken = crypto.randomBytes(32).toString("hex");
+  const isProd = process.env.NODE_ENV === "production";
+  res.cookie("csrfToken", csrfToken, {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? "none" : "lax",
+    path: "/",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+  return res.status(200).json({
+    success: true,
+    message: "CSRF token generated",
+    data: { csrfToken }
   });
 };
 
@@ -290,9 +323,20 @@ const changePassword = async (req, res, next) => {
 
     await User.updatePassword(req.user.id, new_password);
 
+    const isProd = process.env.NODE_ENV === "production";
+    const clearCookieOptions = {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? "none" : "lax",
+      path: "/",
+      expires: new Date(0),
+    };
+    res.cookie("jwt", "", clearCookieOptions);
+    res.cookie("csrfToken", "", clearCookieOptions);
+
     return res.status(200).json({
       success: true,
-      message: "Password changed successfully.",
+      message: "Password changed successfully. Please log in again.",
       data: null,
     });
   } catch (error) {
@@ -337,7 +381,16 @@ const deactivateSelf = async (req, res, next) => {
     await User.deactivate(req.user.id, 'self');
 
     // Clear cookie immediately
-    res.cookie('jwt', '', { httpOnly: true, expires: new Date(0) });
+    const isProd = process.env.NODE_ENV === "production";
+    const clearCookieOptions = {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? "none" : "lax",
+      path: "/",
+      expires: new Date(0),
+    };
+    res.cookie('jwt', '', clearCookieOptions);
+    res.cookie('csrfToken', '', clearCookieOptions);
 
     return res.status(200).json({
       success: true,
@@ -349,4 +402,4 @@ const deactivateSelf = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, logout, getProfile, updateProfile, changePassword, deactivateSelf };
+module.exports = { register, login, logout, getCsrfToken, getProfile, updateProfile, changePassword, deactivateSelf };

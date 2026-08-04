@@ -29,9 +29,8 @@ const { getJwtSecret } = require("../config/env");
  */
 const protect = async (req, res, next) => {
   try {
-    // ── 1. Extract the token from the cookie or Authorization header ──
-    const authHeader = req.headers.authorization;
-    const token = req.cookies.jwt || (authHeader && authHeader.startsWith("Bearer ") ? authHeader.split(" ")[1] : null);
+    // ── 1. Extract the token from the HttpOnly cookie ──
+    const token = req.cookies.jwt;
 
     if (!token) {
       return res.status(401).json({

@@ -10,8 +10,13 @@ import Favorites from './pages/Favorites';
 import MyPayments from './pages/MyPayments';
 import NotFound from './pages/NotFound';
 import HotelDetails from './pages/HotelDetails';
+import { getProfile } from './services/authService';
 
 // Mock all services
+vi.mock('./services/authService', () => ({
+  getProfile: vi.fn(),
+  getCsrfToken: vi.fn(),
+}));
 vi.mock('./services/profileService', () => ({
   updateProfile: vi.fn(),
   changePassword: vi.fn(),
@@ -58,8 +63,9 @@ const renderWithContext = (ui, { route = '/' } = {}) => {
 };
 
 test('Profile renders user data and submits update', async () => {
-  localStorage.setItem('user', JSON.stringify({ first_name: 'John', last_name: 'Doe', email: 'john@example.com', role: 'customer' }));
-  localStorage.setItem('token', 'fake-token');
+  getProfile.mockResolvedValueOnce({
+    data: { data: { user: { first_name: 'John', last_name: 'Doe', email: 'john@example.com', role: 'customer' } } }
+  });
 
   updateProfile.mockResolvedValueOnce({ data: { data: { user: { first_name: 'Jane', last_name: 'Doe', email: 'john@example.com', role: 'customer' } } } });
 
@@ -78,8 +84,9 @@ test('Profile renders user data and submits update', async () => {
 });
 
 test('Favorites empty state and remove action', async () => {
-  localStorage.setItem('user', JSON.stringify({ email: 'test@example.com' }));
-  localStorage.setItem('token', 'token');
+  getProfile.mockResolvedValueOnce({
+    data: { data: { user: { email: 'test@example.com' } } }
+  });
   
   getMyFavorites.mockResolvedValueOnce({
     data: { data: { favorites: [{ id: 1, favorite_id: 101, name: 'Test Hotel', city: 'Colombo' }] } }
@@ -98,8 +105,9 @@ test('Favorites empty state and remove action', async () => {
 });
 
 test('My Payments demo-history page', async () => {
-  localStorage.setItem('user', JSON.stringify({ email: 'test@example.com' }));
-  localStorage.setItem('token', 'token');
+  getProfile.mockResolvedValueOnce({
+    data: { data: { user: { email: 'test@example.com' } } }
+  });
   
   getMyPayments.mockResolvedValueOnce({
     data: { data: { payments: [{ id: 1, hotel_name: 'Payment Hotel', amount: 5000, payment_status: 'completed', payment_method: 'card', created_at: new Date().toISOString() }] } }
@@ -127,8 +135,9 @@ test('Protected customer routes redirect when not logged in', async () => {
 });
 
 test('Hotel review form handles success and backend errors', async () => {
-  localStorage.setItem('user', JSON.stringify({ email: 'test@example.com' }));
-  localStorage.setItem('token', 'token');
+  getProfile.mockResolvedValue({
+    data: { data: { user: { email: 'test@example.com' } } }
+  });
   
   getHotelById.mockResolvedValue({ data: { data: { hotel: { id: 1, name: 'Hotel 1' } } } });
   getRoomsByHotel.mockResolvedValue({ data: { data: { rooms: [] } } });

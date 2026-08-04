@@ -8,12 +8,12 @@ process.env.NODE_ENV = "test";
 // adminAnalytics.test.js runs last in its own subprocess.
 const pool = require('../../config/db');
 const createApp = require('../../app');
-const generateToken = require('../../utils/generateToken');
+const { getAuthHeaders } = require('../helpers/authHelper');
 
 let server;
 let baseUrl;
-let adminToken;
-let customerToken;
+let adminHeaders;
+let customerHeaders;
 let queryCalls = [];
 let mockEmptyResults = false;
 
@@ -78,8 +78,8 @@ test.before(async () => {
   await new Promise((resolve) => server.once("listening", resolve));
   baseUrl = `http://127.0.0.1:${server.address().port}`;
   // Seed data mock: user ID 1 = admin, user ID 2 = customer
-  adminToken = generateToken(1);
-  customerToken = generateToken(2);
+  adminHeaders = getAuthHeaders(1, 'admin');
+  customerHeaders = getAuthHeaders(2, 'customer');
 });
 
 test.after(async () => {
@@ -102,7 +102,7 @@ test("Admin Analytics API", async (t) => {
 
   await t.test("non-admin (customer) request returns 403", async () => {
     const res = await fetch(`${baseUrl}/api/v1/admin/dashboard`, {
-      headers: { Authorization: `Bearer ${customerToken}` },
+      headers: customerHeaders,
     });
     assert.equal(res.status, 403);
   });
@@ -110,7 +110,7 @@ test("Admin Analytics API", async (t) => {
   // ── Invalid period ────────────────────────────────────────────────────────
   await t.test("invalid period value returns 400", async () => {
     const res = await fetch(`${baseUrl}/api/v1/admin/dashboard?period=invalid`, {
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: adminHeaders,
     });
     const body = await res.json();
     assert.equal(res.status, 400);
@@ -121,7 +121,7 @@ test("Admin Analytics API", async (t) => {
   for (const period of ["7days", "30days", "6months", "12months", "all"]) {
     await t.test(`period=${period} returns 200 with valid structure`, async () => {
       const res = await fetch(`${baseUrl}/api/v1/admin/dashboard?period=${period}`, {
-        headers: { Authorization: `Bearer ${adminToken}` },
+        headers: adminHeaders,
       });
       const body = await res.json();
 
@@ -170,7 +170,7 @@ test("Admin Analytics API", async (t) => {
   // ── Default period (no param) ─────────────────────────────────────────────
   await t.test("omitting period defaults to 30days and returns 200", async () => {
     const res = await fetch(`${baseUrl}/api/v1/admin/dashboard`, {
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: adminHeaders,
     });
     const body = await res.json();
     assert.equal(res.status, 200);
@@ -181,7 +181,7 @@ test("Admin Analytics API", async (t) => {
   await t.test("empty analytics results structure handles 0 gracefully", async () => {
     mockEmptyResults = true;
     const res = await fetch(`${baseUrl}/api/v1/admin/dashboard?period=30days`, {
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: adminHeaders,
     });
     const body = await res.json();
     assert.equal(res.status, 200);
@@ -196,7 +196,7 @@ test("Admin Analytics API", async (t) => {
   await t.test("Phase 3 SQL query correctness for booking lifecycle", async () => {
     // Make a request so queryCalls is populated
     await fetch(`${baseUrl}/api/v1/admin/dashboard`, {
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: adminHeaders,
     });
 
     const overviewCall = queryCalls.find(c => c.sql.includes("total_users"));
@@ -211,7 +211,7 @@ test("Admin Analytics API", async (t) => {
   // ── /analytics alias (backward compat) ───────────────────────────────────
   await t.test("/analytics alias returns same shape as /dashboard", async () => {
     const res = await fetch(`${baseUrl}/api/v1/admin/analytics?period=30days`, {
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: adminHeaders,
     });
     const body = await res.json();
     assert.equal(res.status, 200);

@@ -8,6 +8,7 @@ process.env.NODE_ENV = "test"; // to mock emails
 const pool = require('../../config/db');
 const createApp = require('../../app');
 const User = require('../../models/User');
+const { getCsrfHeaders } = require('../helpers/authHelper');
 
 let server;
 let baseUrl;
@@ -30,7 +31,7 @@ test("Account Recovery & Verification Flows", async (t) => {
   await t.test("Register new user (unverified by default)", async () => {
     const res = await fetch(`${baseUrl}/api/v1/auth/register`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getCsrfHeaders(),
       body: JSON.stringify({
         first_name: "Test",
         last_name: "Recovery",
@@ -46,7 +47,7 @@ test("Account Recovery & Verification Flows", async (t) => {
   await t.test("Login before verification is rejected", async () => {
     const res = await fetch(`${baseUrl}/api/v1/auth/login`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getCsrfHeaders(),
       body: JSON.stringify({ email: testEmail, password: testPassword }),
     });
     const body = await res.json();
@@ -71,7 +72,7 @@ test("Account Recovery & Verification Flows", async (t) => {
   await t.test("Resend verification email", async () => {
     const res = await fetch(`${baseUrl}/api/v1/auth/resend-verification`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getCsrfHeaders(),
       body: JSON.stringify({ email: testEmail }),
     });
     const body = await res.json();
@@ -89,7 +90,7 @@ test("Account Recovery & Verification Flows", async (t) => {
   await t.test("Login succeeds after verification", async () => {
     const res = await fetch(`${baseUrl}/api/v1/auth/login`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getCsrfHeaders(),
       body: JSON.stringify({ email: testEmail, password: testPassword }),
     });
     const body = await res.json();
@@ -100,7 +101,7 @@ test("Account Recovery & Verification Flows", async (t) => {
   await t.test("Forgot password flow returns generic response", async () => {
     const res = await fetch(`${baseUrl}/api/v1/auth/forgot-password`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getCsrfHeaders(),
       body: JSON.stringify({ email: testEmail }),
     });
     const body = await res.json();
