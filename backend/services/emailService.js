@@ -22,8 +22,19 @@ const escapeHtml = (unsafe) => {
 
 const buildEmailTemplate = (event) => {
   const { event_type, recipient_email, payload } = event;
-  const safeName = escapeHtml(payload.userName || "Customer");
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const safeName = escapeHtml(payload?.userName || "Customer");
+
+  let frontendUrl = process.env.FRONTEND_URL;
+  if (process.env.NODE_ENV === 'production') {
+    if (!frontendUrl) {
+      throw new Error("FRONTEND_URL is required in production");
+    }
+    if (!frontendUrl.toLowerCase().startsWith("https://")) {
+      throw new Error("FRONTEND_URL must be an HTTPS URL in production");
+    }
+  } else {
+    frontendUrl = frontendUrl || "http://localhost:5173";
+  }
 
   let subject = "";
   let htmlContent = "";
@@ -247,11 +258,24 @@ const buildEmailTemplate = (event) => {
 };
 
 const processEmailEvent = async (event) => {
-  const { subject, htmlContent, textContent } = buildEmailTemplate(event);
+  let subject, htmlContent, textContent;
+  try {
+    const templateContent = buildEmailTemplate(event);
+    subject = templateContent.subject;
+    htmlContent = templateContent.htmlContent;
+    textContent = templateContent.textContent;
+  } catch (err) {
+    console.error(`[Email Worker Error] Template generation failed for event ${event.id} (${event.event_type}): ${err.message}`);
+    return false;
+  }
 
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.log(`[Email Mock Worker] Sent "${event.event_type}" to ${event.recipient_email} (Subject: ${subject})`);
-    return true; // Simulate success
+    if (process.env.NODE_ENV === 'test') {
+      console.log(`[Email Mock Worker] Processed event ${event.id} (${event.event_type})`);
+      return true; // Simulate success only in tests
+    }
+    console.error(`[Email Worker Error] Missing EMAIL_USER or EMAIL_PASS. Cannot process event ${event.id} (${event.event_type}).`);
+    return false; // Fail closed
   }
 
   const transporter = getTransporter();
@@ -272,7 +296,7 @@ const processEmailEvent = async (event) => {
     console.log(`Email sent: ${info.messageId} (Event ID: ${event.id})`);
     return true;
   } catch (error) {
-    console.error(`[Email Worker Error] sending to ${event.recipient_email}:`, error.message);
+    console.error(`[Email Worker Error] Failed to process event ${event.id} (${event.event_type}):`, error.message);
     // Return false to let the worker retry instead of throwing unhandled exceptions
     return false;
   }
