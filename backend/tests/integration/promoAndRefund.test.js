@@ -32,14 +32,15 @@ process.env.STRIPE_WEBHOOK_SECRET = "mock_wh";
 
 const pool = require('../../config/db');
 const createApp = require('../../app');
-const generateToken = require('../../utils/generateToken');
+const { getAuthHeaders, getCsrfHeaders } = require('../helpers/authHelper');
 const PromoCode = require('../../models/PromoCode');
 const Booking = require('../../models/Booking');
 
 let server;
 let baseUrl;
-let adminCookie;
-let customerCookie;
+let adminHeaders;
+let customerHeaders;
+let csrfHeaders;
 let testRoomId;
 let testHotelId;
 
@@ -69,8 +70,9 @@ test.before(async () => {
   baseUrl = `http://127.0.0.1:${server.address().port}`;
 
   // Generate tokens
-  adminCookie = `jwt=${generateToken(1)}`;
-  customerCookie = `jwt=${generateToken(2)}`;
+  adminHeaders = getAuthHeaders(1, 'admin');
+  customerHeaders = getAuthHeaders(2, 'customer');
+  csrfHeaders = getCsrfHeaders();
 });
 
 test.after(async () => {
@@ -117,10 +119,7 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
   await t.test("Admin can create a promo code", async () => {
     const res = await fetch(`${baseUrl}/api/v1/promos`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Cookie": adminCookie
-      },
+      headers: adminHeaders,
       body: JSON.stringify({
         code: "TESTPROMO",
         discount_type: "percentage",
@@ -144,10 +143,7 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
   await t.test("Customer can validate a valid promo code", async () => {
     const res = await fetch(`${baseUrl}/api/v1/promos/validate`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Cookie": customerCookie
-      },
+      headers: customerHeaders,
       body: JSON.stringify({
         code: "TESTPROMO",
         booking_value: 25000.00
@@ -164,10 +160,7 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
   await t.test("Validating an expired or invalid code returns error", async () => {
     const res = await fetch(`${baseUrl}/api/v1/promos/validate`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Cookie": customerCookie
-      },
+      headers: customerHeaders,
       body: JSON.stringify({
         code: "NONEXISTENT",
         booking_value: 25000.00
@@ -187,10 +180,7 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
 
     const res = await fetch(`${baseUrl}/api/v1/bookings`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Cookie": customerCookie
-      },
+      headers: customerHeaders,
       body: JSON.stringify({
         room_id: roomId,
         check_in: tomorrowStr,
@@ -222,10 +212,7 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
     // Cancel the booking we just created
     const cancelRes = await fetch(`${baseUrl}/api/v1/bookings/${bookingId}/cancel`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "Cookie": customerCookie
-      },
+      headers: customerHeaders,
       body: JSON.stringify({ reason: "No longer needing trip" })
     });
     assert.equal(cancelRes.status, 200);
@@ -236,10 +223,7 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
     // Update refund status to processing
     const res = await fetch(`${baseUrl}/api/v1/admin/bookings/${bookingId}/refund`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        "Cookie": adminCookie
-      },
+      headers: adminHeaders,
       body: JSON.stringify({
         refund_status: "processing",
         refund_provider_reference: "REF-STRIPE-12345",
@@ -257,10 +241,7 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
     // 1. Transition to completed WITHOUT provider reference should fail (we pass an empty/null ref)
     const failCompletedRes = await fetch(`${baseUrl}/api/v1/admin/bookings/${bookingId}/refund`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        "Cookie": adminCookie
-      },
+      headers: adminHeaders,
       body: JSON.stringify({
         refund_status: "completed",
         refund_provider_reference: "" // Empty reference should be rejected
@@ -271,10 +252,7 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
     // 2. Transition to completed WITH provider reference should succeed
     const successCompletedRes = await fetch(`${baseUrl}/api/v1/admin/bookings/${bookingId}/refund`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        "Cookie": adminCookie
-      },
+      headers: adminHeaders,
       body: JSON.stringify({
         refund_status: "completed",
         refund_provider_reference: "REF-COMPLETED-12345"
@@ -287,10 +265,7 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
     // 3. Changing status after completed should fail
     const changeAfterCompletedRes = await fetch(`${baseUrl}/api/v1/admin/bookings/${bookingId}/refund`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        "Cookie": adminCookie
-      },
+      headers: adminHeaders,
       body: JSON.stringify({
         refund_status: "failed"
       })
@@ -309,10 +284,7 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
 
     const res = await fetch(`${baseUrl}/api/v1/bookings`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Cookie": customerCookie
-      },
+      headers: customerHeaders,
       body: JSON.stringify({
         room_id: testRoomId,
         check_in: offsetDate(1),
@@ -350,7 +322,7 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
 
     const res1 = await fetch(`${baseUrl}/api/v1/bookings`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Cookie": customerCookie },
+      headers: customerHeaders,
       body: JSON.stringify({ room_id: testRoomId, check_in: offsetDate(5), check_out: offsetDate(8), promo_code: promoCode })
     });
     const body1 = await res1.json();
@@ -361,7 +333,7 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
 
     const cancelRes1 = await fetch(`${baseUrl}/api/v1/bookings/${bookingId1}/cancel`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json", "Cookie": customerCookie }
+      headers: customerHeaders
     });
     assert.equal(cancelRes1.status, 200);
 
@@ -370,7 +342,7 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
 
     const res2 = await fetch(`${baseUrl}/api/v1/bookings/checkout`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Cookie": customerCookie },
+      headers: customerHeaders,
       body: JSON.stringify({ room_id: testRoomId, check_in: offsetDate(8), check_out: offsetDate(11), payment_method: "cash", promo_code: promoCode })
     });
     assert.equal(res2.status, 201);
@@ -382,7 +354,7 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
 
     const cancelRes2 = await fetch(`${baseUrl}/api/v1/bookings/${bookingId2}/cancel`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json", "Cookie": customerCookie }
+      headers: customerHeaders
     });
     assert.equal(cancelRes2.status, 200);
 
@@ -401,7 +373,7 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
 
     const res = await fetch(`${baseUrl}/api/v1/bookings`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Cookie": customerCookie },
+      headers: customerHeaders,
       body: JSON.stringify({ room_id: testRoomId, check_in: offsetDate(11), check_out: offsetDate(14), promo_code: promoCode })
     });
     const body = await res.json();
@@ -438,7 +410,7 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
   await t.test("Authorization: non-admin cannot access admin refund", async () => {
     const res = await fetch(`${baseUrl}/api/v1/admin/bookings/1/refund`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json", "Cookie": customerCookie },
+      headers: customerHeaders,
       body: JSON.stringify({ refund_status: "processing" })
     });
     assert.equal(res.status, 403);
@@ -464,7 +436,7 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
 
     const res = await fetch(`${baseUrl}/api/v1/admin/bookings/${bookingId}/refund`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json", "Cookie": adminCookie },
+      headers: adminHeaders,
       body: JSON.stringify({ refund_status: "processing", refund_reason: "API fail test" })
     });
 
@@ -542,7 +514,7 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
     const promises = dates.map(([check_in, check_out]) =>
       fetch(`${baseUrl}/api/v1/bookings`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Cookie": customerCookie },
+        headers: customerHeaders,
         body: JSON.stringify({
           room_id: testRoomId,
           check_in,
@@ -577,7 +549,7 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
 
     const res = await fetch(`${baseUrl}/api/v1/bookings`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Cookie": customerCookie },
+      headers: customerHeaders,
       body: JSON.stringify({ room_id: testRoomId, check_in: offsetDate(21), check_out: offsetDate(24), promo_code: promoCode })
     });
     const body = await res.json();

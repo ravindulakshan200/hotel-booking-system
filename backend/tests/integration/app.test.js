@@ -52,7 +52,7 @@ test("disallowed browser origins are rejected", async () => {
 test("malformed JSON returns 400 rather than 500", async () => {
   const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "x-csrf-token": "test-csrf" },
     body: "{broken",
   });
   const body = await response.json();

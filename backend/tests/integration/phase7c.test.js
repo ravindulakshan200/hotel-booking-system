@@ -13,7 +13,7 @@ process.env.NODE_ENV = "test";
 
 const pool = require('../../config/db');
 const createApp = require('../../app');
-const generateToken = require('../../utils/generateToken');
+const { getAuthHeaders, getCsrfHeaders } = require('../helpers/authHelper');
 
 const runId = Math.random().toString(36).substring(2, 10);
 const testAdminEmail = `test-phase7c-admin-${runId}@hotel.com`;
@@ -23,8 +23,9 @@ const testRoomNumber = `7C-${runId}`;
 
 let server;
 let baseUrl;
-let adminToken;
-let customerToken;
+let adminHeaders;
+  let csrfHeaders = getCsrfHeaders();
+let customerHeaders;
 let testAdminId;
 let testCustomerId;
 let testHotelId;
@@ -225,8 +226,8 @@ test.before(async () => {
     unrelatedImageId = unrelatedImageRes.insertId;
 
     // Generate tokens
-    adminToken = generateToken(testAdminId);
-    customerToken = generateToken(testCustomerId);
+    adminHeaders = getAuthHeaders(testAdminId, 'admin');
+    customerHeaders = getAuthHeaders(testCustomerId, 'customer');
 
     // Start Express server
     server = createApp().listen(0);
@@ -384,9 +385,12 @@ test("Phase 7C Integration Test Suite", async (t) => {
       const blob = new Blob([jpegBytes], { type: 'image/jpeg' });
       formData.append('images', blob, 'test-image.jpg');
 
+      const multipartHeaders = { ...adminHeaders };
+      delete multipartHeaders["Content-Type"];
+
       const res = await fetch(`${baseUrl}/api/v1/hotels/${testHotelId}/images`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${adminToken}` },
+        headers: multipartHeaders,
         body: formData,
       });
       const body = await res.json();
@@ -425,7 +429,7 @@ test("Phase 7C Integration Test Suite", async (t) => {
     await st.test("Submit unauthenticated support ticket and get lookup token", async () => {
       const res = await fetch(`${baseUrl}/api/v1/support`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: csrfHeaders,
         body: JSON.stringify({
           name: 'Anonymous Guest',
           email: 'anon@example.com',
@@ -449,7 +453,7 @@ test("Phase 7C Integration Test Suite", async (t) => {
     await st.test("Unauthenticated lookup fails with invalid token", async () => {
       const res = await fetch(`${baseUrl}/api/v1/support/lookup`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: csrfHeaders,
         body: JSON.stringify({ token: 'wrong-token-value' })
       });
       assert.equal(res.status, 404);
@@ -458,7 +462,7 @@ test("Phase 7C Integration Test Suite", async (t) => {
     await st.test("Unauthenticated lookup succeeds with valid token and returns only safe fields", async () => {
       const res = await fetch(`${baseUrl}/api/v1/support/lookup`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: csrfHeaders,
         body: JSON.stringify({ token: unauthLookupToken })
       });
       assert.equal(res.status, 200);
@@ -570,30 +574,27 @@ test("Phase 7C Integration Test Suite", async (t) => {
       // Deactivate customer via admin
       const resDeactivate = await fetch(`${baseUrl}/api/v1/admin/users/${testCustomerId}/deactivate`, {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${adminToken}`,
-          'Content-Type': 'application/json'
-        },
+        headers: adminHeaders,
         body: JSON.stringify({ reason: 'Testing soft deactivation' })
       });
       assert.equal(resDeactivate.status, 200);
 
       // Now customer profile call must return 401
       const resProfile = await fetch(`${baseUrl}/api/v1/auth/profile`, {
-        headers: { 'Authorization': `Bearer ${customerToken}` }
+        headers: customerHeaders
       });
       assert.equal(resProfile.status, 401);
 
       // Reactivate customer
       const resReactivate = await fetch(`${baseUrl}/api/v1/admin/users/${testCustomerId}/reactivate`, {
         method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${adminToken}` }
+        headers: adminHeaders
       });
       assert.equal(resReactivate.status, 200);
 
       // Customer can get profile again
       const resProfileAfter = await fetch(`${baseUrl}/api/v1/auth/profile`, {
-        headers: { 'Authorization': `Bearer ${customerToken}` }
+        headers: customerHeaders
       });
       assert.equal(resProfileAfter.status, 200);
     });
@@ -601,10 +602,7 @@ test("Phase 7C Integration Test Suite", async (t) => {
     await st.test("Admin cannot deactivate the last active admin account", async () => {
       const res = await fetch(`${baseUrl}/api/v1/admin/users/${testAdminId}/deactivate`, {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${adminToken}`,
-          'Content-Type': 'application/json'
-        },
+        headers: adminHeaders,
         body: JSON.stringify({ reason: 'Deactivating last admin' })
       });
       // 403 = cannot deactivate own account; 400 = last active admin guard
@@ -619,7 +617,7 @@ test("Phase 7C Integration Test Suite", async (t) => {
     await st.test("Submit a support ticket successfully", async () => {
       const res = await fetch(`${baseUrl}/api/v1/support`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: csrfHeaders,
         body: JSON.stringify({
           name: 'Jane Doe',
           email: 'jane@example.com',
@@ -638,7 +636,7 @@ test("Phase 7C Integration Test Suite", async (t) => {
     await st.test("Submit ticket via spam honeypot is silently completed without storing real data", async () => {
       const res = await fetch(`${baseUrl}/api/v1/support`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: csrfHeaders,
         body: JSON.stringify({
           name: 'Spam Bot',
           email: 'spambot@example.com',
@@ -662,17 +660,14 @@ test("Phase 7C Integration Test Suite", async (t) => {
       // Add agent note via admin
       const resNote = await fetch(`${baseUrl}/api/v1/admin/support/${ticketId}/notes`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${adminToken}`,
-          'Content-Type': 'application/json'
-        },
+        headers: adminHeaders,
         body: JSON.stringify({ note: 'Investigated and payment looks good.' })
       });
       assert.equal(resNote.status, 200);
 
       // Admin detail contains agent_notes
       const resAdminDetail = await fetch(`${baseUrl}/api/v1/admin/support/${ticketId}`, {
-        headers: { 'Authorization': `Bearer ${adminToken}` }
+        headers: adminHeaders
       });
       const bodyAdmin = await resAdminDetail.json();
       assert.ok(bodyAdmin.data.ticket.agent_notes.includes('Investigated'));
@@ -692,7 +687,7 @@ test("Phase 7C Integration Test Suite", async (t) => {
   await t.test("Admin CSV and PDF Report Generation", async (st) => {
     await st.test("CSV Report has proper MIME headers and is safe from injection", async () => {
       const res = await fetch(`${baseUrl}/api/v1/admin/reports/bookings.csv`, {
-        headers: { 'Authorization': `Bearer ${adminToken}` }
+        headers: adminHeaders
       });
       assert.equal(res.status, 200);
       assert.equal(res.headers.get('Content-Type'), 'text/csv; charset=utf-8');
@@ -707,7 +702,7 @@ test("Phase 7C Integration Test Suite", async (t) => {
 
     await st.test("PDF Report has proper PDF Content-Type header", async () => {
       const res = await fetch(`${baseUrl}/api/v1/admin/reports/payments.pdf`, {
-        headers: { 'Authorization': `Bearer ${adminToken}` }
+        headers: adminHeaders
       });
       assert.equal(res.status, 200);
       assert.equal(res.headers.get('Content-Type'), 'application/pdf');
@@ -733,7 +728,7 @@ test("Phase 7C Integration Test Suite", async (t) => {
   await t.test("Invoice and Receipt PDF Generation", async (st) => {
     await st.test("Generate invoice PDF download returns proper application/pdf", async () => {
       const res = await fetch(`${baseUrl}/api/v1/bookings/${testBookingId}/invoice.pdf`, {
-        headers: { 'Authorization': `Bearer ${customerToken}` }
+        headers: customerHeaders
       });
       assert.equal(res.status, 200);
       assert.equal(res.headers.get('Content-Type'), 'application/pdf');
@@ -742,7 +737,7 @@ test("Phase 7C Integration Test Suite", async (t) => {
 
     await st.test("Generate receipt PDF download returns proper application/pdf since paid", async () => {
       const res = await fetch(`${baseUrl}/api/v1/bookings/${testBookingId}/receipt.pdf`, {
-        headers: { 'Authorization': `Bearer ${customerToken}` }
+        headers: customerHeaders
       });
       assert.equal(res.status, 200);
       assert.equal(res.headers.get('Content-Type'), 'application/pdf');
@@ -751,7 +746,7 @@ test("Phase 7C Integration Test Suite", async (t) => {
 
     await st.test("Access denied if customer requests another user's invoice", async () => {
       const res = await fetch(`${baseUrl}/api/v1/bookings/${testBookingId}/invoice.pdf`, {
-        headers: { 'Authorization': `Bearer ${adminToken}` } // adminId !== testCustomerId (owner of booking)
+        headers: adminHeaders // adminId !== testCustomerId (owner of booking)
       });
       // The invoice endpoint verifies user_id ownership match
       assert.equal(res.status, 404); // returns 404 Booking not found if ownership fails
@@ -762,7 +757,7 @@ test("Phase 7C Integration Test Suite", async (t) => {
   await t.test("Audit Log Recording", async (st) => {
     await st.test("Check log entries are created and fetchable by admin", async () => {
       const res = await fetch(`${baseUrl}/api/v1/admin/audit-logs`, {
-        headers: { 'Authorization': `Bearer ${adminToken}` }
+        headers: adminHeaders
       });
       const body = await res.json();
       assert.equal(res.status, 200);
@@ -779,10 +774,7 @@ test("Phase 7C Integration Test Suite", async (t) => {
     await st.test("Customer reviews a hotel they stayed at", async () => {
       const res = await fetch(`${baseUrl}/api/v1/reviews`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${customerToken}`,
-          'Content-Type': 'application/json'
-        },
+        headers: customerHeaders,
         body: JSON.stringify({
           hotel_id: testHotelId,
           rating: 5,
@@ -797,10 +789,7 @@ test("Phase 7C Integration Test Suite", async (t) => {
     await st.test("Another user reports a review", async () => {
       const res = await fetch(`${baseUrl}/api/v1/reviews/${testReviewId}/report`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${adminToken}`, // admin reporting it
-          'Content-Type': 'application/json'
-        },
+        headers: adminHeaders,
         body: JSON.stringify({
           reason: 'This looks like spam or fake review.',
           category: 'fake'
@@ -812,7 +801,7 @@ test("Phase 7C Integration Test Suite", async (t) => {
     await st.test("Admin views reported reviews, resolves the report, and hides the review", async () => {
       // 1. Get reports
       const resReports = await fetch(`${baseUrl}/api/v1/admin/reviews/reports`, {
-        headers: { 'Authorization': `Bearer ${adminToken}` }
+        headers: adminHeaders
       });
       assert.equal(resReports.status, 200);
       const bodyReports = await resReports.json();
@@ -822,10 +811,7 @@ test("Phase 7C Integration Test Suite", async (t) => {
       // 2. Resolve the report as actioned
       const resResolve = await fetch(`${baseUrl}/api/v1/admin/reviews/reports/${testReportId}/resolve`, {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${adminToken}`,
-          'Content-Type': 'application/json'
-        },
+        headers: adminHeaders,
         body: JSON.stringify({ action: 'actioned' })
       });
       assert.equal(resResolve.status, 200);
@@ -833,10 +819,7 @@ test("Phase 7C Integration Test Suite", async (t) => {
       // 3. Moderate / Hide review
       const resModerate = await fetch(`${baseUrl}/api/v1/admin/reviews/${testReviewId}/moderate`, {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${adminToken}`,
-          'Content-Type': 'application/json'
-        },
+        headers: adminHeaders,
         body: JSON.stringify({ action: 'hide' })
       });
       assert.equal(resModerate.status, 200);

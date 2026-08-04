@@ -8,13 +8,13 @@ const HttpError = require("./utils/httpError");
 const errorHandler = require("./middleware/errorHandler");
 const notFound = require("./middleware/notFound");
 
-const healthRoutes        = require('./routes/healthRoutes');
-const authRoutes          = require('./routes/authRoutes');
-const hotelRoutes         = require('./routes/hotelRoutes');
-const roomRoutes          = require('./routes/roomRoutes');
-const bookingRoutes       = require('./routes/bookingRoutes');
-const paymentRoutes       = require('./routes/paymentRoutes');
-const adminRoutes         = require('./routes/adminRoutes');
+const healthRoutes = require('./routes/healthRoutes');
+const authRoutes = require("./routes/authRoutes");
+const hotelRoutes = require('./routes/hotelRoutes');
+const roomRoutes = require('./routes/roomRoutes');
+const bookingRoutes = require('./routes/bookingRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 const reviewRoutes        = require('./routes/reviewRoutes');
 const favoriteRoutes      = require('./routes/favoriteRoutes');
 const promoRoutes         = require('./routes/promoRoutes');
@@ -46,7 +46,7 @@ const createApp = () => {
       },
       credentials: true,
       methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-      allowedHeaders: ["Content-Type", "Authorization"],
+      allowedHeaders: ["Content-Type", "Authorization", "x-csrf-token"],
     })
   );
 
@@ -57,6 +57,9 @@ const createApp = () => {
   app.use(express.json({ limit: '100kb' }));
   app.use(express.urlencoded({ extended: false, limit: '100kb' }));
   app.use(cookieParser());
+
+  const csrfMiddleware = require('./middleware/csrfMiddleware');
+  app.use(csrfMiddleware);
 
   // ── Static file serving for local image uploads ──────────────────────────────
   // NOTE: Local uploads are NOT persistent on serverless deployments (Vercel etc.).

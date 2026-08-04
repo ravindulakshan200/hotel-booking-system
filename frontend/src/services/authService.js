@@ -1,7 +1,10 @@
-import api from '../api/axios';
+import api, { setCsrfToken } from '../api/axios';
 
 export const login = async (email, password) => {
   const response = await api.post('/auth/login', { email, password });
+  if (response.data && response.data.data && response.data.data.csrfToken) {
+    setCsrfToken(response.data.data.csrfToken);
+  }
   return response;
 };
 
@@ -32,5 +35,18 @@ export const resendVerification = async (email) => {
 
 export const logout = async () => {
   const response = await api.post('/auth/logout');
+  return response;
+};
+
+export const getProfile = async () => {
+  const response = await api.get('/auth/profile');
+  return response;
+};
+
+export const getCsrfToken = async () => {
+  const response = await api.get('/auth/csrf-token');
+  if (response.data && response.data.data && response.data.data.csrfToken) {
+    setCsrfToken(response.data.data.csrfToken);
+  }
   return response;
 };

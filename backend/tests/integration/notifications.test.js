@@ -3,10 +3,10 @@ const assert = require("node:assert/strict");
 const request = require("supertest");
 const app = require("../../app")();
 const pool = require("../../config/db");
-const generateToken = require("../../utils/generateToken");
+const { getAuthHeaders } = require("../helpers/authHelper");
 
 test("Notifications Integration", async (t) => {
-  let userToken;
+  let authHeaders;
   let userId;
   let notificationId;
 
@@ -17,7 +17,7 @@ test("Notifications Integration", async (t) => {
       ["Test", "User", "notifuser@example.com", "hashedpassword"]
     );
     userId = result.insertId;
-    userToken = generateToken(userId, "user");
+    authHeaders = getAuthHeaders(userId, "user");
 
     // Insert some notifications
     const [insertResult] = await pool.query(
@@ -42,7 +42,7 @@ test("Notifications Integration", async (t) => {
   await t.test("should get paginated notifications for the user", async () => {
     const res = await request(app)
       .get("/api/v1/notifications?page=1&page_size=1")
-      .set("Cookie", `jwt=${userToken}`);
+      .set(authHeaders);
 
     assert.equal(res.status, 200);
     assert.equal(res.body.success, true);
@@ -53,7 +53,7 @@ test("Notifications Integration", async (t) => {
   await t.test("should return the correct unread count", async () => {
     const res = await request(app)
       .get("/api/v1/notifications/unread-count")
-      .set("Cookie", `jwt=${userToken}`);
+      .set(authHeaders);
 
     assert.equal(res.status, 200);
     assert.equal(res.body.data.count, 2);
@@ -62,13 +62,13 @@ test("Notifications Integration", async (t) => {
   await t.test("should mark a single notification as read", async () => {
     const res = await request(app)
       .patch(`/api/v1/notifications/${notificationId}/read`)
-      .set("Cookie", `jwt=${userToken}`);
+      .set(authHeaders);
 
     assert.equal(res.status, 200);
 
     const countRes = await request(app)
       .get("/api/v1/notifications/unread-count")
-      .set("Cookie", `jwt=${userToken}`);
+      .set(authHeaders);
 
     assert.equal(countRes.body.data.count, 1);
   });
@@ -76,14 +76,14 @@ test("Notifications Integration", async (t) => {
   await t.test("should mark all remaining notifications as read", async () => {
     const res = await request(app)
       .patch("/api/v1/notifications/read-all")
-      .set("Cookie", `jwt=${userToken}`);
+      .set(authHeaders);
 
     assert.equal(res.status, 200);
     assert.equal(res.body.data.count, 1); // 1 was marked
 
     const countRes = await request(app)
       .get("/api/v1/notifications/unread-count")
-      .set("Cookie", `jwt=${userToken}`);
+      .set(authHeaders);
 
     assert.equal(countRes.body.data.count, 0);
   });

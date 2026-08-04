@@ -55,7 +55,7 @@ test("/api/v1/auth/login responds through the exported handler/app", async () =>
 
   const response = await fetch(`http://localhost:${port}/api/v1/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "x-csrf-token": "test-csrf" },
     body: "{broken",
   });
   const body = await response.json();
