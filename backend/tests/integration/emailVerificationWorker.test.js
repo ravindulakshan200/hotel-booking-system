@@ -19,6 +19,20 @@ const emailWorker = require('../../services/emailWorker');
 let server;
 let baseUrl;
 
+const normalizePayload = (val) => {
+  if (val === null || val === undefined) throw new Error("Payload is null or undefined");
+  let parsed = val;
+  if (Buffer.isBuffer(val)) {
+    parsed = JSON.parse(val.toString('utf8'));
+  } else if (typeof val === 'string') {
+    parsed = JSON.parse(val);
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error("Payload is not an object");
+  }
+  return parsed;
+};
+
 test.before(async () => {
   server = createApp().listen(0);
   await new Promise((resolve) => server.once("listening", resolve));
@@ -74,7 +88,7 @@ test("Verification email immediate processing regression", async (t) => {
     testEventIds.push(rows[0].id);
 
     assert.equal(rows[0].status, 'sent', "Immediate processing should mark status as sent");
-    assert.equal(rows[0].payload, '{}', "Payload should be cleared to not store tokens permanently");
+    assert.deepStrictEqual(normalizePayload(rows[0].payload), {}, "Payload should be cleared to not store tokens permanently");
     assert.equal(processStub.calledOnce, true, "Email service should be called once");
   });
 
@@ -96,7 +110,7 @@ test("Verification email immediate processing regression", async (t) => {
     testEventIds.push(rows[0].id);
 
     assert.equal(rows[0].status, 'sent');
-    assert.equal(rows[0].payload, '{}');
+    assert.deepStrictEqual(normalizePayload(rows[0].payload), {});
     assert.equal(processStub.calledOnce, true, "Email service should be called once");
   });
 
@@ -178,7 +192,7 @@ test("Verification email immediate processing regression", async (t) => {
 
     const [rows] = await pool.query('SELECT status, payload FROM email_outbox WHERE id = ?', [eventId]);
     assert.equal(rows[0].status, 'sent');
-    assert.equal(rows[0].payload, '{}');
+    assert.deepStrictEqual(normalizePayload(rows[0].payload), {});
   });
 
   await t.test("invalid payload envelopes fail safely", async () => {
