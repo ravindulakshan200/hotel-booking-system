@@ -1,4 +1,11 @@
 const test = require("node:test");
+const { getTodayDateOnly } = require("../../utils/dateUtils");
+
+function offsetDate(days) {
+  const d = new Date(getTodayDateOnly() + "T12:00:00Z");
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().split("T")[0];
+}
 const assert = require("node:assert/strict");
 
 const mockStripe = {
@@ -296,7 +303,7 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
     await pool.query("DELETE FROM promo_codes WHERE code = ?", [promoCode]);
     await pool.query(
       `INSERT INTO promo_codes (code, discount_type, discount_value, start_date, end_date, usage_limit, times_used, times_reserved)
-       VALUES (?, 'fixed', 500.00, '2026-07-25', '2026-08-30', 2, 0, 0)`,
+       VALUES (?, 'fixed', 500.00, '${offsetDate(-10)}', '${offsetDate(100)}', 2, 0, 0)`,
       [promoCode]
     );
 
@@ -308,8 +315,8 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
       },
       body: JSON.stringify({
         room_id: testRoomId,
-        check_in: "2026-08-01",
-        check_out: "2026-08-04",
+        check_in: offsetDate(1),
+        check_out: offsetDate(4),
         promo_code: promoCode
       })
     });
@@ -337,14 +344,14 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
     await pool.query("DELETE FROM promo_codes WHERE code = ?", [promoCode]);
     await pool.query(
       `INSERT INTO promo_codes (code, discount_type, discount_value, start_date, end_date, usage_limit, times_used, times_reserved)
-       VALUES (?, 'fixed', 500.00, '2026-07-25', '2026-08-30', 2, 0, 0)`,
+       VALUES (?, 'fixed', 500.00, '${offsetDate(-10)}', '${offsetDate(100)}', 2, 0, 0)`,
       [promoCode]
     );
 
     const res1 = await fetch(`${baseUrl}/api/v1/bookings`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Cookie": customerCookie },
-      body: JSON.stringify({ room_id: testRoomId, check_in: "2026-08-05", check_out: "2026-08-08", promo_code: promoCode })
+      body: JSON.stringify({ room_id: testRoomId, check_in: offsetDate(5), check_out: offsetDate(8), promo_code: promoCode })
     });
     const body1 = await res1.json();
     const bookingId1 = body1.data.booking.id;
@@ -364,7 +371,7 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
     const res2 = await fetch(`${baseUrl}/api/v1/bookings/checkout`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Cookie": customerCookie },
-      body: JSON.stringify({ room_id: testRoomId, check_in: "2026-08-08", check_out: "2026-08-11", payment_method: "cash", promo_code: promoCode })
+      body: JSON.stringify({ room_id: testRoomId, check_in: offsetDate(8), check_out: offsetDate(11), payment_method: "cash", promo_code: promoCode })
     });
     assert.equal(res2.status, 201);
     const body2 = await res2.json();
@@ -388,14 +395,14 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
     await pool.query("DELETE FROM promo_codes WHERE code = ?", [promoCode]);
     await pool.query(
       `INSERT INTO promo_codes (code, discount_type, discount_value, start_date, end_date, usage_limit, times_used, times_reserved)
-       VALUES (?, 'fixed', 500.00, '2026-07-25', '2026-08-30', 2, 0, 0)`,
+       VALUES (?, 'fixed', 500.00, '${offsetDate(-10)}', '${offsetDate(100)}', 2, 0, 0)`,
       [promoCode]
     );
 
     const res = await fetch(`${baseUrl}/api/v1/bookings`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Cookie": customerCookie },
-      body: JSON.stringify({ room_id: testRoomId, check_in: "2026-08-11", check_out: "2026-08-14", promo_code: promoCode })
+      body: JSON.stringify({ room_id: testRoomId, check_in: offsetDate(11), check_out: offsetDate(14), promo_code: promoCode })
     });
     const body = await res.json();
     const bookingId = body.data.booking.id;
@@ -440,7 +447,7 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
   await t.test("Stripe refund failure updates status to failed", async () => {
     const [bookingResult] = await pool.query(
       `INSERT INTO bookings (user_id, room_id, check_in, check_out, total_price, booking_status, refund_status)
-       VALUES (2, ?, '2026-09-01', '2026-09-05', 50000.00, 'cancelled', 'required')`,
+       VALUES (2, ?, '${offsetDate(30)}', '${offsetDate(35)}', 50000.00, 'cancelled', 'required')`,
       [testRoomId]
     );
     const bookingId = bookingResult.insertId;
@@ -473,7 +480,7 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
   await t.test("charge.refunded webhook confirmation", async () => {
     const [bookingResult] = await pool.query(
       `INSERT INTO bookings (user_id, room_id, check_in, check_out, total_price, booking_status, refund_status)
-       VALUES (2, ?, '2026-09-10', '2026-09-15', 50000.00, 'cancelled', 'processing')`,
+       VALUES (2, ?, '${offsetDate(40)}', '${offsetDate(45)}', 50000.00, 'cancelled', 'processing')`,
       [testRoomId]
     );
     const bookingId = bookingResult.insertId;
@@ -519,17 +526,17 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
     await pool.query("DELETE FROM promo_codes WHERE code = ?", [promoCode]);
     await pool.query(
       `INSERT INTO promo_codes (code, discount_type, discount_value, start_date, end_date, usage_limit, times_used, times_reserved)
-       VALUES (?, 'fixed', 500.00, '2026-07-25', '2026-08-30', 1, 0, 0)`,
+       VALUES (?, 'fixed', 500.00, '${offsetDate(-10)}', '${offsetDate(100)}', 1, 0, 0)`,
       [promoCode]
     );
 
     // Prepare 5 concurrent booking creation promises on non-overlapping dates
     const dates = [
-      ["2026-08-15", "2026-08-16"],
-      ["2026-08-16", "2026-08-17"],
-      ["2026-08-17", "2026-08-18"],
-      ["2026-08-18", "2026-08-19"],
-      ["2026-08-19", "2026-08-20"]
+      [offsetDate(15), offsetDate(16)],
+      [offsetDate(16), offsetDate(17)],
+      [offsetDate(17), offsetDate(18)],
+      [offsetDate(18), offsetDate(19)],
+      [offsetDate(19), offsetDate(20)]
     ];
 
     const promises = dates.map(([check_in, check_out]) =>
@@ -564,14 +571,14 @@ test("Promo Codes & Refund Tracking Integration Tests", async (t) => {
     await pool.query("DELETE FROM promo_codes WHERE code = ?", [promoCode]);
     await pool.query(
       `INSERT INTO promo_codes (code, discount_type, discount_value, start_date, end_date, usage_limit, times_used, times_reserved)
-       VALUES (?, 'fixed', 500.00, '2026-07-25', '2026-08-30', 5, 0, 0)`,
+       VALUES (?, 'fixed', 500.00, '${offsetDate(-10)}', '${offsetDate(100)}', 5, 0, 0)`,
       [promoCode]
     );
 
     const res = await fetch(`${baseUrl}/api/v1/bookings`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Cookie": customerCookie },
-      body: JSON.stringify({ room_id: testRoomId, check_in: "2026-08-21", check_out: "2026-08-24", promo_code: promoCode })
+      body: JSON.stringify({ room_id: testRoomId, check_in: offsetDate(21), check_out: offsetDate(24), promo_code: promoCode })
     });
     const body = await res.json();
     const bookingId = body.data.booking.id;
