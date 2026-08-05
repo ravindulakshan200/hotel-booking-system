@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import AdminLayout from '../../layouts/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { getHotels } from '../../services/hotelService';
@@ -184,9 +185,9 @@ const AdminRooms = () => {
         </div>
       )}
 
-      {showModal && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog">
+      {showModal && createPortal(
+        <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)', position: 'fixed', inset: 0, zIndex: 1055 }}>
+          <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div className="modal-content">
               <form onSubmit={handleSubmit}>
                 <div className="modal-header">
@@ -195,19 +196,19 @@ const AdminRooms = () => {
                 </div>
                 <div className="modal-body">
                   <div className="mb-3">
-                    <label className="form-label">Hotel</label>
-                    <select className="form-select" required value={form.hotel_id} onChange={(e) => setForm({ ...form, hotel_id: e.target.value })}>
+                    <label htmlFor="room-hotel" className="form-label">Hotel</label>
+                    <select id="room-hotel" name="hotel_id" className="form-select" required value={form.hotel_id} onChange={(e) => setForm({ ...form, hotel_id: e.target.value })}>
                       {hotels.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
                     </select>
                   </div>
                   <div className="row">
                     <div className="col-6 mb-3">
-                      <label className="form-label">Room Number</label>
-                      <input className="form-control" required value={form.room_number} onChange={(e) => setForm({ ...form, room_number: e.target.value })} />
+                      <label htmlFor="room-number" className="form-label">Room Number</label>
+                      <input id="room-number" name="room_number" className="form-control" required value={form.room_number} onChange={(e) => setForm({ ...form, room_number: e.target.value })} />
                     </div>
                     <div className="col-6 mb-3">
-                      <label className="form-label">Type</label>
-                      <select className="form-select" value={form.room_type} onChange={(e) => setForm({ ...form, room_type: e.target.value })}>
+                      <label htmlFor="room-type" className="form-label">Type</label>
+                      <select id="room-type" name="room_type" className="form-select" value={form.room_type} onChange={(e) => setForm({ ...form, room_type: e.target.value })}>
                         <option value="single">Single</option>
                         <option value="double">Double</option>
                         <option value="suite">Suite</option>
@@ -217,25 +218,25 @@ const AdminRooms = () => {
                   </div>
                   <div className="row">
                     <div className="col-6 mb-3">
-                      <label className="form-label">Price/Night (LKR)</label>
-                      <input type="number" step="0.01" min="0" className="form-control" required value={form.price_per_night} onChange={(e) => setForm({ ...form, price_per_night: e.target.value })} />
+                      <label htmlFor="room-price" className="form-label">Price/Night (LKR)</label>
+                      <input id="room-price" name="price_per_night" type="number" step="0.01" min="0" className="form-control" required value={form.price_per_night} onChange={(e) => setForm({ ...form, price_per_night: e.target.value })} />
                     </div>
                     <div className="col-6 mb-3">
-                      <label className="form-label">Capacity</label>
-                      <input type="number" min="1" className="form-control" required value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
+                      <label htmlFor="room-capacity" className="form-label">Capacity</label>
+                      <input id="room-capacity" name="capacity" type="number" min="1" className="form-control" required value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
                     </div>
                   </div>
                   <div className="mb-3">
-                    <label className="form-label">Status</label>
-                    <select className="form-select" value={form.availability_status} onChange={(e) => setForm({ ...form, availability_status: e.target.value })}>
+                    <label htmlFor="room-status" className="form-label">Status</label>
+                    <select id="room-status" name="availability_status" className="form-select" value={form.availability_status} onChange={(e) => setForm({ ...form, availability_status: e.target.value })}>
                       <option value="available">Available</option>
                       <option value="booked">Booked</option>
                       <option value="maintenance">Maintenance</option>
                     </select>
                   </div>
                   <div className="mb-3">
-                    <label className="form-label">Image URL (optional)</label>
-                    <input className="form-control" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} />
+                    <label htmlFor="room-image" className="form-label">Image URL (optional)</label>
+                    <input id="room-image" name="image_url" className="form-control" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} />
                   </div>
                 </div>
                 <div className="modal-footer">
@@ -245,7 +246,8 @@ const AdminRooms = () => {
               </form>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </AdminLayout>
   );
