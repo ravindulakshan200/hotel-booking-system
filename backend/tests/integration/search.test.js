@@ -73,6 +73,7 @@ test("Availability search API", async (t) => {
     assert.ok(Array.isArray(body.data.rooms));
     if (body.data.rooms.length > 0) {
       assert.ok('is_available' in body.data.rooms[0]);
+      assert.ok('image_url' in body.data.rooms[0]);
     }
   });
 
