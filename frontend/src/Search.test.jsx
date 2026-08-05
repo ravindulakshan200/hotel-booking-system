@@ -4,10 +4,15 @@ import { describe, it, expect, vi } from 'vitest';
 import Home from './pages/Home';
 import Hotels from './pages/Hotels';
 import * as hotelService from './services/hotelService';
+import * as authContext from './context/AuthContext';
 
 vi.mock('./services/hotelService', () => ({
   getHotels: vi.fn(() => Promise.resolve({ data: { data: { hotels: [] } } })),
   searchAvailability: vi.fn(() => Promise.resolve({ data: { data: { hotels: [] } } })),
+}));
+
+vi.mock('./context/AuthContext', () => ({
+  useAuth: vi.fn(() => ({ user: null, loading: false }))
 }));
 
 describe('Search and Availability Flow', () => {

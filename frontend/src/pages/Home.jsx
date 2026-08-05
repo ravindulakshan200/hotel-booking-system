@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
+import { useAuth } from '../context/AuthContext';
 import { getHotels } from '../services/hotelService';
 
 const SL_DESTINATIONS = [
@@ -21,6 +22,7 @@ const Home = () => {
     check_out: '',
     guests: 2
   });
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -52,8 +54,15 @@ const Home = () => {
   return (
     <div className="home-page page-wrapper fade-in">
       <section className="hero-section">
+        <img
+          src="/images/hotels/marino-beach-demo/marino-beach-demo-main.webp"
+          alt=""
+          aria-hidden="true"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+          data-testid="hero-image"
+        />
         <div className="hero-overlay"></div>
-        <div className="container hero-content text-center">
+        <div className="container hero-content text-center" style={{ position: 'relative', zIndex: 1 }}>
           <div className="slide-up">
             <span className="badge text-white px-4 py-2 mb-4 d-inline-block" style={{ background: 'rgba(212,175,55,0.25)', border: '1px solid var(--color-accent)', backdropFilter: 'blur(8px)', borderRadius: '50px', letterSpacing: '2px', fontSize: '0.8rem' }}>
               🌴 DISCOVER SRI LANKA
@@ -106,9 +115,17 @@ const Home = () => {
             <Link to="/hotels" className="btn btn-accent btn-lg px-5">
               <i className="bi bi-building me-2"></i>Explore All Hotels
             </Link>
-            <Link to="/register" className="btn btn-outline-light btn-lg px-5">
-              <i className="bi bi-person-plus me-2"></i>Sign Up Free
-            </Link>
+            {authLoading ? (
+              <span className="btn btn-outline-light btn-lg px-5" style={{ visibility: 'hidden' }} data-testid="auth-cta-loading">Loading</span>
+            ) : user ? (
+              <Link to="/my-bookings" className="btn btn-outline-light btn-lg px-5" data-testid="auth-cta-authenticated">
+                <i className="bi bi-journal-check me-2"></i>VIEW MY BOOKINGS
+              </Link>
+            ) : (
+              <Link to="/register" className="btn btn-outline-light btn-lg px-5" data-testid="auth-cta-logged-out">
+                <i className="bi bi-person-plus me-2"></i>SIGN UP FREE
+              </Link>
+            )}
           </div>
         </div>
       </section>
