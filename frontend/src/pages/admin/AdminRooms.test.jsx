@@ -98,3 +98,37 @@ describe('AdminRooms Delete Behavior', () => {
     });
   });
 });
+
+describe('AdminRooms Add/Edit Modal Accessibility and Stability', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getAllRooms.mockResolvedValue(mockRoomsData);
+    getHotels.mockResolvedValue(mockHotelsData);
+  });
+
+  test('Modal inputs have associated labels and maintain state during pointer movement', async () => {
+    renderComponent();
+    await waitFor(() => expect(screen.getByText('101A')).toBeInTheDocument());
+
+    // Open add room modal
+    fireEvent.click(screen.getByRole('button', { name: '+ Add Room' }));
+
+    // Check accessibility: input has associated label
+    const roomNumberInput = await screen.findByLabelText('Room Number');
+    expect(roomNumberInput).toBeInTheDocument();
+    expect(roomNumberInput).toHaveAttribute('id', 'room-number');
+    expect(roomNumberInput).toHaveAttribute('name', 'room_number');
+
+    // Type a value
+    fireEvent.change(roomNumberInput, { target: { value: '999X' } });
+    expect(roomNumberInput.value).toBe('999X');
+
+    // Simulate mouse movement on the modal and document
+    fireEvent.mouseMove(document.body);
+    fireEvent.mouseMove(roomNumberInput);
+
+    // Verify modal does not close and state persists
+    expect(screen.getByText('Add Room')).toBeInTheDocument();
+    expect(roomNumberInput.value).toBe('999X');
+  });
+});
