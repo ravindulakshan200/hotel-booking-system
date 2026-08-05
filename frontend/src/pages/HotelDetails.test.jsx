@@ -169,4 +169,100 @@ describe('HotelDetails Component', () => {
       expect(favButton).not.toBeDisabled();
     });
   });
+
+  test('HotelDetails renders the room image when present', async () => {
+    hotelService.getHotelById.mockResolvedValue({
+      data: { success: true, data: { hotel: { id: 1, name: 'Room Image Hotel', amenities: [] } } }
+    });
+    roomService.getRoomsByHotel.mockResolvedValue({
+      data: { data: { rooms: [{ id: 101, room_number: '101', image_url: 'https://example.com/room101.jpg' }] } }
+    });
+    reviewService.getHotelReviews.mockResolvedValue({ data: { data: { reviews: [] } } });
+    favoriteService.getMyFavorites.mockResolvedValue({ data: { data: { favorites: [] } } });
+
+    render(
+      <MemoryRouter initialEntries={['/hotel/1']}>
+        <Routes>
+          <Route path="/hotel/:id" element={<HotelDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Room Image Hotel')).toBeInTheDocument();
+    });
+
+    const roomImage = screen.getByTestId('room-image-101');
+    expect(roomImage).toBeInTheDocument();
+    expect(roomImage).toHaveAttribute('src', 'https://example.com/room101.jpg');
+  });
+
+  test('missing image URL uses the fallback immediately', async () => {
+    hotelService.getHotelById.mockResolvedValue({
+      data: { success: true, data: { hotel: { id: 1, name: 'Fallback Image Hotel', amenities: [] } } }
+    });
+    // Room with NO image_url
+    roomService.getRoomsByHotel.mockResolvedValue({
+      data: { data: { rooms: [{ id: 102, room_number: '102', image_url: null }] } }
+    });
+    reviewService.getHotelReviews.mockResolvedValue({ data: { data: { reviews: [] } } });
+    favoriteService.getMyFavorites.mockResolvedValue({ data: { data: { favorites: [] } } });
+
+    render(
+      <MemoryRouter initialEntries={['/hotel/1']}>
+        <Routes>
+          <Route path="/hotel/:id" element={<HotelDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Fallback Image Hotel')).toBeInTheDocument();
+    });
+
+    // Check missing image fallback
+    const roomImage = screen.getByTestId('room-image-102');
+    expect(roomImage).toHaveAttribute('src', '/images/default-hotel.svg');
+  });
+
+  test('broken image URL uses the fallback on error and prevents infinite loops', async () => {
+    hotelService.getHotelById.mockResolvedValue({
+      data: { success: true, data: { hotel: { id: 1, name: 'Broken Image Hotel', amenities: [] } } }
+    });
+    // Room with broken image_url
+    roomService.getRoomsByHotel.mockResolvedValue({
+      data: { data: { rooms: [{ id: 103, room_number: '103', image_url: 'https://example.com/broken-room.jpg' }] } }
+    });
+    reviewService.getHotelReviews.mockResolvedValue({ data: { data: { reviews: [] } } });
+    favoriteService.getMyFavorites.mockResolvedValue({ data: { data: { favorites: [] } } });
+
+    render(
+      <MemoryRouter initialEntries={['/hotel/1']}>
+        <Routes>
+          <Route path="/hotel/:id" element={<HotelDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Broken Image Hotel')).toBeInTheDocument();
+    });
+
+    const roomImage = screen.getByTestId('room-image-103');
+
+    // confirm the original URL is rendered
+    expect(roomImage).toHaveAttribute('src', 'https://example.com/broken-room.jpg');
+
+    // fire the error event
+    fireEvent.error(roomImage);
+
+    // confirm it changes to DEFAULT_ROOM_IMAGE
+    expect(roomImage).toHaveAttribute('src', '/images/default-hotel.svg');
+
+    // fire a second error event
+    fireEvent.error(roomImage);
+
+    // confirm it remains DEFAULT_ROOM_IMAGE without another replacement loop
+    expect(roomImage).toHaveAttribute('src', '/images/default-hotel.svg');
+  });
 });

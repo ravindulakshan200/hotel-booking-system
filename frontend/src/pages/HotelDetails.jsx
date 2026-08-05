@@ -9,6 +9,15 @@ import { formatCurrency } from '../utils/formatters';
 import HotelMap from '../components/HotelMap';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
 
+const DEFAULT_ROOM_IMAGE = '/images/default-hotel.svg';
+
+const handleRoomImageError = (event) => {
+  const image = event.currentTarget;
+  if (image.getAttribute('src') !== DEFAULT_ROOM_IMAGE) {
+    image.setAttribute('src', DEFAULT_ROOM_IMAGE);
+  }
+};
+
 const HotelDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -330,8 +339,15 @@ const HotelDetails = () => {
               <div className="d-flex flex-column gap-4 mb-5">
                 {rooms.map((room, index) => (
                   <div key={room.id} className="modern-card hover-lift p-0 d-flex flex-column flex-md-row slide-up shadow-sm border" style={{ animationDelay: `${index * 50}ms` }}>
-                    <div className="bg-light" style={{ width: '100%', minHeight: '220px', backgroundImage: 'url(/images/default-hotel.svg)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
-                      {/* Optional: Add Room Image placeholder */}
+                    <div className="bg-light position-relative overflow-hidden" style={{ width: '100%', minHeight: '220px' }}>
+                      <img
+                        src={room.image_url || DEFAULT_ROOM_IMAGE}
+                        alt={`Room ${room.room_number}`}
+                        className="position-absolute w-100 h-100"
+                        style={{ objectFit: 'cover', top: 0, left: 0 }}
+                        onError={handleRoomImageError}
+                        data-testid={`room-image-${room.id}`}
+                      />
                     </div>
                     <div className="p-4 d-flex flex-column w-100 bg-white">
                       <div className="d-flex justify-content-between align-items-start mb-2">
