@@ -349,9 +349,9 @@ const AdminHotels = () => {
     }
   };
 
-  const handleToggleArchive = async (id, isArchived) => {
+  const handleToggleArchive = async (id, isInactive) => {
     try {
-      if (isArchived) {
+      if (isInactive) {
         await unarchiveHotel(id);
       } else {
         await archiveHotel(id);
@@ -400,12 +400,11 @@ const AdminHotels = () => {
                       <span className={`badge ${h.status === 'active' ? 'bg-success' : 'bg-secondary'} me-1`}>
                         {h.status}
                       </span>
-                      {h.is_archived && <span className="badge bg-warning text-dark">Archived</span>}
                     </td>
                     <td>
                       <button className="btn btn-sm btn-outline-primary me-1" onClick={() => openEdit(h)}>Edit</button>
-                      <button className="btn btn-sm btn-outline-warning me-1" onClick={() => handleToggleArchive(h.id, h.is_archived)}>
-                        {h.is_archived ? 'Unarchive' : 'Archive'}
+                      <button className="btn btn-sm btn-outline-warning me-1" onClick={() => handleToggleArchive(h.id, h.status === 'inactive')}>
+                        {h.status === 'inactive' ? 'Unarchive' : 'Archive'}
                       </button>
                       {confirmDeleteId === h.id ? (
                         <div className="btn-group">
