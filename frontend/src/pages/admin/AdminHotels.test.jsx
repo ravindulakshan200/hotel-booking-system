@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { BrowserRouter } from 'react-router';
 import AdminHotels from './AdminHotels';
-import { getAllHotelsAdmin, createHotel, updateHotel, deleteHotel } from '../../services/adminService';
+import { getAllHotelsAdmin, createHotel, updateHotel, deleteHotel, archiveHotel, unarchiveHotel } from '../../services/adminService';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 
 // ── Service mocks ─────────────────────────────────────────────────────────────
@@ -39,6 +39,8 @@ describe('AdminHotels Modal and Interactions', () => {
     getAllHotelsAdmin.mockResolvedValue(mockSuccessData);
     createHotel.mockResolvedValue({ data: { success: true } });
     updateHotel.mockResolvedValue({ data: { success: true } });
+    archiveHotel.mockResolvedValue({ data: { success: true } });
+    unarchiveHotel.mockResolvedValue({ data: { success: true } });
   });
 
   test('All advanced fields render', async () => {
@@ -177,5 +179,81 @@ describe('AdminHotels Modal and Interactions', () => {
 
     // Expect it was called only once despite clicks
     expect(createHotel).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('AdminHotels - Archive/Unarchive Behavior', () => {
+  const mixedHotelsData = {
+    data: {
+      data: {
+        hotels: [
+          { id: 1, name: 'Active Hotel', city: 'Colombo', status: 'active' },
+          { id: 2, name: 'Inactive Hotel', city: 'Kandy', status: 'inactive' }
+        ]
+      }
+    }
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getAllHotelsAdmin.mockResolvedValue(mixedHotelsData);
+    archiveHotel.mockResolvedValue({ data: { success: true } });
+    unarchiveHotel.mockResolvedValue({ data: { success: true } });
+  });
+
+  test('active hotel displays Archive action, inactive hotel displays Unarchive action', async () => {
+    renderAdminHotels();
+    await waitFor(() => expect(screen.getByText('Active Hotel')).toBeInTheDocument());
+
+    // Check for Archive button next to Active Hotel
+    const archiveBtns = screen.getAllByText('Archive');
+    expect(archiveBtns.length).toBeGreaterThan(0);
+
+    // Check for Unarchive button next to Inactive Hotel
+    const unarchiveBtns = screen.getAllByText('Unarchive');
+    expect(unarchiveBtns.length).toBeGreaterThan(0);
+  });
+
+  test('clicking Archive invokes inactive-status update and refreshes list', async () => {
+    renderAdminHotels();
+    await waitFor(() => expect(screen.getByText('Active Hotel')).toBeInTheDocument());
+
+    const archiveBtn = screen.getByText('Archive');
+    await act(async () => {
+      fireEvent.click(archiveBtn);
+    });
+
+    expect(archiveHotel).toHaveBeenCalledWith(1);
+    expect(getAllHotelsAdmin.mock.calls.length).toBeGreaterThanOrEqual(2); // Initial load + refresh
+  });
+
+  test('clicking Reactivate invokes active-status update and refreshes list', async () => {
+    renderAdminHotels();
+    await waitFor(() => expect(screen.getByText('Inactive Hotel')).toBeInTheDocument());
+
+    const unarchiveBtn = screen.getByText('Unarchive');
+    await act(async () => {
+      fireEvent.click(unarchiveBtn);
+    });
+
+    expect(unarchiveHotel).toHaveBeenCalledWith(2);
+    expect(getAllHotelsAdmin.mock.calls.length).toBeGreaterThanOrEqual(2); // Initial load + refresh
+  });
+
+  test('failed update displays the safe API error message', async () => {
+    const mockError = new Error('API Error');
+    mockError.response = { data: { message: 'Failed to toggle archive status securely' } };
+    archiveHotel.mockRejectedValue(mockError);
+
+    renderAdminHotels();
+    await waitFor(() => expect(screen.getByText('Active Hotel')).toBeInTheDocument());
+
+    const archiveBtn = screen.getByText('Archive');
+    await act(async () => {
+      fireEvent.click(archiveBtn);
+    });
+
+    expect(archiveHotel).toHaveBeenCalledWith(1);
+    expect(screen.getByText('Failed to toggle archive status securely')).toBeInTheDocument();
   });
 });

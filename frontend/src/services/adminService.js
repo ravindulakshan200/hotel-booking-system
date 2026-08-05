@@ -41,12 +41,12 @@ export const deleteHotel = async (id) => {
 };
 
 export const archiveHotel = async (id) => {
-  const response = await api.patch(`/hotels/${id}/archive`);
+  const response = await api.put(`/hotels/${id}`, { status: 'inactive' });
   return response;
 };
 
 export const unarchiveHotel = async (id) => {
-  const response = await api.patch(`/hotels/${id}/unarchive`);
+  const response = await api.put(`/hotels/${id}`, { status: 'active' });
   return response;
 };
 
