@@ -6,6 +6,7 @@ import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
 
 import Home from './pages/Home';
+import ImageCredits from './pages/ImageCredits';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Hotels from './pages/Hotels';
@@ -70,6 +71,7 @@ function App() {
           <Suspense fallback={<AdminLoading />}>
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="/image-credits" element={<ImageCredits />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />

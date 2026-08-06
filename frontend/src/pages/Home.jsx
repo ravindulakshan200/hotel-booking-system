@@ -4,12 +4,12 @@ import { useAuth } from '../context/AuthContext';
 import { getHotels } from '../services/hotelService';
 
 const SL_DESTINATIONS = [
-  { city: 'Colombo', label: 'Colombo', img: '/images/default-hotel.svg', desc: 'The vibrant capital' },
-  { city: 'Kandy', label: 'Kandy', img: '/images/default-hotel.svg', desc: 'Temple of the Sacred Tooth' },
-  { city: 'Galle', label: 'Galle', img: '/images/default-hotel.svg', desc: 'Colonial fort & beaches' },
-  { city: 'Ella', label: 'Ella', img: '/images/default-hotel.svg', desc: 'Misty mountains & tea' },
-  { city: 'Sigiriya', label: 'Sigiriya', img: '/images/default-hotel.svg', desc: 'Ancient rock fortress' },
-  { city: 'Bentota', label: 'Bentota', img: '/images/default-hotel.svg', desc: 'Tropical beach paradise' },
+  { city: 'Colombo', label: 'Colombo', img: '/images/destinations/colombo.webp', desc: 'The vibrant capital', alt: 'Colombo skyline, Sri Lanka' },
+  { city: 'Kandy', label: 'Kandy', img: '/images/destinations/kandy.webp', desc: 'Temple of the Sacred Tooth', alt: 'Kandy, Sri Lanka' },
+  { city: 'Galle', label: 'Galle', img: '/images/destinations/galle.webp', desc: 'Colonial fort & beaches', alt: 'Galle fort, Sri Lanka' },
+  { city: 'Ella', label: 'Ella', img: '/images/destinations/ella.webp', desc: 'Misty mountains & tea', alt: 'Nine Arches Bridge in Ella, Sri Lanka' },
+  { city: 'Sigiriya', label: 'Sigiriya', img: '/images/destinations/sigiriya.webp', desc: 'Ancient rock fortress', alt: 'Sigiriya Rock fortress, Sri Lanka' },
+  { city: 'Bentota', label: 'Bentota', img: '/images/destinations/bentota.webp', desc: 'Tropical beach paradise', alt: 'Bentota beach, Sri Lanka' },
 ];
 
 const Home = () => {
@@ -160,7 +160,19 @@ const Home = () => {
             {SL_DESTINATIONS.map((dest, i) => (
               <div key={dest.city} className={`col-6 col-md-4 col-lg-2 slide-up`} style={{ animationDelay: `${i * 60}ms` }}>
                 <Link to={`/hotels?city=${dest.city}`} className="text-decoration-none">
-                  <div className="destination-card" style={{ backgroundImage: `url(${dest.img})` }}>
+                  <div className="destination-card">
+                    <img
+                      src={dest.img}
+                      alt={dest.alt}
+                      loading="lazy"
+                      decoding="async"
+                      onError={(e) => {
+                        if (!e.target.src.endsWith('/images/default-hotel.svg')) {
+                          e.target.src = '/images/default-hotel.svg';
+                        }
+                      }}
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }}
+                    />
                     <div className="destination-card-label">
                       <span className="d-block">{dest.label}</span>
                       <small style={{ fontWeight: 400, fontSize: '0.75rem', opacity: 0.8 }}>{dest.desc}</small>

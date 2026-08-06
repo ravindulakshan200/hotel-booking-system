@@ -30,6 +30,7 @@ const Footer = () => (
             <li><Link to="/">Home</Link></li>
             <li><Link to="/hotels">All Hotels</Link></li>
             <li><Link to="/my-bookings">My Bookings</Link></li>
+            <li><Link to="/image-credits">Image Credits</Link></li>
           </ul>
         </div>
         <div className="col-lg-2 col-md-3 col-6">
