@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import Home from './Home';
 import { vi } from 'vitest';
@@ -116,6 +116,61 @@ describe('Home Component', () => {
     expect(screen.getByText(/Your Perfect Stay/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/Where to\?/i)).toBeInTheDocument();
     expect(screen.getByText(/Explore All Hotels/i)).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
+  });
+
+  test('destination cards use local WebP assets, have alt text, lazy loading, and labels render', async () => {
+    authContext.useAuth.mockReturnValue({ user: null, loading: false });
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    const destinations = [
+      { city: 'Colombo', desc: 'The vibrant capital', alt: 'Colombo skyline, Sri Lanka', src: '/images/destinations/colombo.webp' },
+      { city: 'Kandy', desc: 'Temple of the Sacred Tooth', alt: 'Kandy, Sri Lanka', src: '/images/destinations/kandy.webp' },
+      { city: 'Galle', desc: 'Colonial fort & beaches', alt: 'Galle fort, Sri Lanka', src: '/images/destinations/galle.webp' },
+      { city: 'Ella', desc: 'Misty mountains & tea', alt: 'Nine Arches Bridge in Ella, Sri Lanka', src: '/images/destinations/ella.webp' },
+      { city: 'Sigiriya', desc: 'Ancient rock fortress', alt: 'Sigiriya Rock fortress, Sri Lanka', src: '/images/destinations/sigiriya.webp' },
+      { city: 'Bentota', desc: 'Tropical beach paradise', alt: 'Bentota beach, Sri Lanka', src: '/images/destinations/bentota.webp' }
+    ];
+
+    for (const dest of destinations) {
+      // Label and description render
+      expect(screen.getByText(dest.city)).toBeInTheDocument();
+      expect(screen.getByText(dest.desc)).toBeInTheDocument();
+
+      // Image renders with exact alt text
+      const img = screen.getByAltText(dest.alt);
+      expect(img).toBeInTheDocument();
+
+      // Image uses exact local WebP path
+      expect(img).toHaveAttribute('src', dest.src);
+
+      // No external URLs
+      expect(img.getAttribute('src')).not.toMatch(/^https?:\/\//);
+
+      // Lazy loading and async decoding
+      expect(img).toHaveAttribute('loading', 'lazy');
+      expect(img).toHaveAttribute('decoding', 'async');
+
+      // Local fallback behavior exists (behavioral test)
+      fireEvent.error(img);
+      expect(img).toHaveAttribute('src', '/images/default-hotel.svg');
+    }
+
+    // Home search remains rendered
+    expect(screen.getByPlaceholderText(/Where to\?/i)).toBeInTheDocument();
+
+    // Featured Properties remains rendered
+    expect(screen.getByText(/Featured Properties/i)).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.queryByRole('status')).not.toBeInTheDocument();
