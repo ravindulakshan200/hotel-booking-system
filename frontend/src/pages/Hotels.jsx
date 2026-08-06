@@ -32,7 +32,7 @@ const Hotels = () => {
   const [maxPrice, setMaxPrice] = useState(searchParams.get('max_price') || '');
   const [sort, setSort] = useState(searchParams.get('sort') || '');
 
-  const [pagination, setPagination] = useState({ page: 1, limit: 9, total_pages: 1 });
+  const [pagination, setPagination] = useState({ page: 1, limit: 9, total_pages: 1, total_items: 0 });
 
   const fetchHotels = useCallback(async () => {
     setLoading(true);
@@ -53,13 +53,14 @@ const Hotels = () => {
         response = await getHotels(queryParams);
       }
 
-      const data = response.data?.data;
-      if (data) {
-        setHotels(data.items || data.hotels || []);
+      const payload = response.data;
+      if (payload?.success) {
+        setHotels(payload.items || payload.data?.hotels || []);
         setPagination({
-          page: data.page || 1,
-          limit: data.limit || 9,
-          total_pages: data.total_pages || 1,
+          page: payload.page || payload.data?.page || 1,
+          limit: payload.limit || payload.data?.limit || 9,
+          total_pages: payload.total_pages || 1,
+          total_items: payload.total_items || payload.data?.count || 0
         });
       }
     } catch (err) {
@@ -230,7 +231,7 @@ const Hotels = () => {
             <div className="col-lg-9">
                 <div className="d-flex justify-content-between align-items-center mb-4">
                     <h4 className="font-serif fw-bold text-primary mb-0">
-                        {loading ? 'Searching...' : `${hotels.length} Hotel${hotels.length !== 1 ? 's' : ''} Found`}
+                        {loading ? 'Searching...' : `${pagination.total_items} Hotel${pagination.total_items !== 1 ? 's' : ''} Found`}
                     </h4>
                 </div>
 
