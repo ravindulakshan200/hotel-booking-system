@@ -182,6 +182,16 @@ describe('Axios Interceptor CSRF Refresh', () => {
     expect(window.location.href).toBe('/login');
   });
 
+  it('should not redirect to /login on 401 if skipAuthRedirect is true', async () => {
+    mockAdapter.mockRejectedValueOnce({
+      config: { url: '/test', method: 'get', skipAuthRedirect: true },
+      response: { status: 401 }
+    });
+
+    await expect(api.get('/test', { skipAuthRedirect: true })).rejects.toBeTruthy();
+    expect(window.location.href).toBe('');
+  });
+
   it('should not redirect to /login on 401 if already on /login', async () => {
     window.location.pathname = '/login';
     mockAdapter.mockRejectedValueOnce({
