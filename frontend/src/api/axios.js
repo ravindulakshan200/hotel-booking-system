@@ -61,7 +61,7 @@ api.interceptors.response.use(
     }
 
     if (error.response && error.response.status === 401) {
-      if (window.location.pathname !== '/login') {
+      if (!originalRequest.skipAuthRedirect && window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
     }

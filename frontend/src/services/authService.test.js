@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { logout } from './authService';
+import { logout, getProfile } from './authService';
 import api, { setCsrfToken } from '../api/axios';
 
 describe('authService logout', () => {
@@ -78,5 +78,31 @@ describe('authService logout', () => {
     const nextReqConfig = mockAdapter.mock.calls[1][0];
     expect(nextReqConfig.url).toBe('/test-unsafe');
     expect(nextReqConfig.headers['x-csrf-token']).toBeUndefined();
+  });
+});
+
+describe('authService getProfile', () => {
+  let mockAdapter;
+
+  beforeEach(() => {
+    mockAdapter = vi.fn();
+    api.defaults.adapter = mockAdapter;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('getProfile sends skipAuthRedirect: true to prevent redirecting anonymous users', async () => {
+    mockAdapter.mockResolvedValueOnce({
+      status: 200,
+      data: { success: true, data: { user: { email: 'test@example.com' } } },
+      config: { url: '/auth/profile', method: 'get', skipAuthRedirect: true }
+    });
+
+    await getProfile();
+
+    expect(mockAdapter.mock.calls[0][0].url).toBe('/auth/profile');
+    expect(mockAdapter.mock.calls[0][0].skipAuthRedirect).toBe(true);
   });
 });

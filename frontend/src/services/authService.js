@@ -43,7 +43,7 @@ export const logout = async () => {
 };
 
 export const getProfile = async () => {
-  const response = await api.get('/auth/profile');
+  const response = await api.get('/auth/profile', { skipAuthRedirect: true });
   return response;
 };
 
