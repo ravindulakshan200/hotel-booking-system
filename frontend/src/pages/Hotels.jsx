@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { getHotels, searchAvailability } from '../services/hotelService';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, formatAddress } from '../utils/formatters';
 import Pagination from '../components/Pagination';
 
 const SL_CITIES = ['Colombo', 'Kandy', 'Galle', 'Ella', 'Nuwara Eliya', 'Bentota', 'Mirissa', 'Sigiriya', 'Negombo', 'Anuradhapura'];
@@ -270,7 +270,7 @@ const Hotels = () => {
                             </div>
 
                             <p className="text-accent fw-semibold mb-3 small">
-                                <i className="bi bi-geo-alt-fill me-1"></i>{hotel.address}, {hotel.city}
+                                <i className="bi bi-geo-alt-fill me-1"></i>{formatAddress(hotel.address, hotel.city)}
                             </p>
 
                             <p className="card-text text-muted flex-grow-1 small" style={{ lineHeight: '1.7' }}>

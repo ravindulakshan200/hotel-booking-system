@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getRoomAvailability } from '../services/roomService';
 
 /**
  * Modern, accessible Room Availability Calendar.
@@ -21,14 +22,12 @@ const AvailabilityCalendar = ({ roomId, onSelectRange, initialCheckIn, initialCh
     setLoading(true);
     setError('');
     try {
-      if (typeof window !== 'undefined' && window.__vitest_worker__ && (!global.fetch || !global.fetch.mock)) return;
-      const baseUrl = window.location.origin && window.location.origin !== 'null' ? window.location.origin : 'http://localhost';
-      const res = await fetch(`${baseUrl}/api/v1/rooms/${roomId}/availability?year=${year}&month=${month}`);
-      const body = await res.json();
-      if (body.success) {
-        setUnavailableDates(body.data.unavailable_dates || []);
+      const response = await getRoomAvailability(roomId, year, month);
+      const body = response.data;
+      if (body?.success && Array.isArray(body?.data?.unavailable_dates)) {
+        setUnavailableDates(body.data.unavailable_dates);
       } else {
-        setError(body.message || 'Failed to load availability.');
+        setError(body?.message || 'Failed to load availability.');
       }
     } catch (err) {
       setError('Connection error. Please try again.');
@@ -206,7 +205,13 @@ const AvailabilityCalendar = ({ roomId, onSelectRange, initialCheckIn, initialCh
       {error && (
         <div className="alert alert-warning py-2 px-3 small d-flex justify-content-between align-items-center">
           <span>{error}</span>
-          <button onClick={fetchAvailability} className="btn btn-link btn-sm p-0 font-semibold text-accent text-decoration-none">Retry</button>
+          <button
+            onClick={fetchAvailability}
+            className="btn btn-link btn-sm px-2 py-1 ms-2 fw-semibold text-accent text-decoration-none"
+            aria-label="Retry loading calendar availability"
+          >
+            Retry
+          </button>
         </div>
       )}
 

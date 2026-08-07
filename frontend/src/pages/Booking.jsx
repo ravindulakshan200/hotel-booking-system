@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router';
 import { checkoutBooking, createBooking } from '../services/bookingService';
 import { createCheckoutSession, getPaymentConfig } from '../services/paymentService';
+import { getRoomAvailability } from '../services/roomService';
 import { validatePromoCode } from '../services/promoService';
 import { formatCurrency } from '../utils/formatters';
 import { getLocalDateInputValue } from '../utils/dates';
@@ -12,17 +13,24 @@ const RoomAvailabilityCalendar = ({ roomId }) => {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
 
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
   const fetchAvailability = async () => {
+    setLoading(true);
+    setError('');
     try {
-      if (typeof window !== 'undefined' && window.__vitest_worker__) return;
-      const baseUrl = window.location.origin && window.location.origin !== 'null' ? window.location.origin : 'http://localhost';
-      const res = await fetch(`${baseUrl}/api/v1/rooms/${roomId}/availability?year=${year}&month=${month}`);
-      const body = await res.json();
-      if (body.success) {
-        setUnavailableDates(body.data.unavailable_dates || []);
+      const response = await getRoomAvailability(roomId, year, month);
+      const body = response.data;
+      if (body?.success && Array.isArray(body?.data?.unavailable_dates)) {
+        setUnavailableDates(body.data.unavailable_dates);
+      } else {
+        setError(body?.message || 'Failed to load availability.');
       }
     } catch (err) {
-      console.error(err);
+      setError('Connection error. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -78,10 +86,31 @@ const RoomAvailabilityCalendar = ({ roomId }) => {
         </div>
       </div>
 
-      <div className="d-grid text-center small text-muted mb-2" style={{ gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
-        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
-          <div key={idx} className="fw-bold text-primary" style={{ fontSize: '0.7rem' }}>{day}</div>
-        ))}
+      {loading && (
+        <div className="text-center py-2">
+          <div className="spinner-border spinner-border-sm text-primary" role="status"></div>
+          <span className="ms-2 text-muted small">Checking dates...</span>
+        </div>
+      )}
+
+      {error && (
+        <div className="alert alert-warning py-1 px-2 small d-flex justify-content-between align-items-center mb-0">
+          <span style={{ fontSize: '0.75rem' }}>{error}</span>
+          <button
+            onClick={fetchAvailability}
+            className="btn btn-link btn-sm px-2 py-1 ms-2 fw-semibold text-accent text-decoration-none"
+            aria-label="Retry loading availability status"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {!loading && !error && (
+        <div className="d-grid text-center small text-muted mb-2" style={{ gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
+          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
+            <div key={idx} className="fw-bold text-primary" style={{ fontSize: '0.7rem' }}>{day}</div>
+          ))}
 
         {days.map((item, idx) => {
           if (item.day === '') {
@@ -104,7 +133,8 @@ const RoomAvailabilityCalendar = ({ roomId }) => {
             </div>
           );
         })}
-      </div>
+        </div>
+      )}
       <div className="d-flex justify-content-center gap-3" style={{ fontSize: '0.68rem' }}>
         <div><span className="badge bg-success me-1" style={{ width: '6px', height: '6px', display: 'inline-block' }}></span>Available</div>
         <div><span className="badge bg-danger me-1" style={{ width: '6px', height: '6px', display: 'inline-block' }}></span>Booked</div>
@@ -347,8 +377,9 @@ const Booking = () => {
                 </div>
 
                 {(!stripeEnabled && !demoPaymentsEnabled) ? (
-                   <div className="alert alert-danger mb-5 rounded">
-                     No payment methods are currently available. Please try again later.
+                   <div className="alert alert-secondary mb-5 rounded text-muted">
+                     <i className="bi bi-info-circle me-2"></i>
+                     Online payments are currently unavailable. Please contact the hotel directly to arrange your booking.
                    </div>
                 ) : (
                   <div className="alert alert-info bg-light border-0 mb-5 rounded" style={{ padding: '1.5rem' }}>
@@ -368,7 +399,7 @@ const Booking = () => {
                   <Link to={hotel ? `/hotels/${hotel.id}` : '/hotels'} className="btn btn-outline-primary px-4 rounded-pill">
                     <i className="bi bi-arrow-left me-2"></i>Go Back
                   </Link>
-                  <button type="submit" className="btn btn-primary btn-lg px-5 rounded-pill shadow-sm" disabled={loading || totalNights === 0 || (!stripeEnabled && !demoPaymentsEnabled)}>
+                  <button type="submit" className="btn btn-primary btn-lg px-5 rounded-pill shadow-sm" disabled={loading || totalNights === 0 || totalPrice <= 0 || (!stripeEnabled && !demoPaymentsEnabled)}>
                     {loading ? <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> : null}
                     {loading ? 'Processing...' : paymentMethod === 'card' ? 'Pay with Card' : (demoPaymentsEnabled ? 'Confirm Demo Booking' : 'Confirm Booking')}
                   </button>
@@ -382,8 +413,8 @@ const Booking = () => {
               <h4 className="font-serif fw-bold mb-4 text-accent border-bottom border-light pb-3">Booking Summary</h4>
 
               <div className="mb-4">
-                <h5 className="fw-bold mb-1">{hotel ? hotel.name : 'Selected Hotel'}</h5>
-                {hotel && <p className="opacity-75 fs-6 mb-0"><i className="bi bi-geo-alt-fill me-1"></i> {hotel.city}, Sri Lanka</p>}
+                <h5 className="fw-bold mb-1 text-white">{hotel ? hotel.name : 'Selected Hotel'}</h5>
+                {hotel && <p className="opacity-75 fs-6 mb-0 text-white"><i className="bi bi-geo-alt-fill me-1"></i> {hotel.city}, Sri Lanka</p>}
               </div>
 
               <div className="bg-white text-dark rounded p-3 mb-4 shadow-sm">
