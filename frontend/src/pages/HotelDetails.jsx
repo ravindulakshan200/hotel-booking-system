@@ -5,7 +5,7 @@ import { getRoomsByHotel } from '../services/roomService';
 import { getHotelReviews, submitReview } from '../services/reviewService';
 import { getMyFavorites, addFavorite, removeFavorite } from '../services/favoriteService';
 import { useAuth } from '../context/AuthContext';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, formatAddress } from '../utils/formatters';
 import HotelMap from '../components/HotelMap';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
 
@@ -251,7 +251,7 @@ const HotelDetails = () => {
           </div>
           <h1 className="display-3 font-serif fw-bold mb-3 text-white">{hotel.name}</h1>
           <p className="lead fs-4 opacity-90 text-white mb-0">
-            <i className="bi bi-geo-fill me-2 text-accent"></i>{hotel.address}
+            <i className="bi bi-geo-fill me-2 text-accent"></i>{formatAddress(hotel.address, hotel.city)}
           </p>
         </div>
       </div>
@@ -564,7 +564,7 @@ const HotelDetails = () => {
               <ul className="list-unstyled mb-0">
                 <li className="mb-3 d-flex align-items-start">
                   <i className="bi bi-geo-alt-fill me-3 text-accent fs-5 mt-1"></i>
-                  <span className="opacity-90">{hotel.address}, {hotel.city}, Sri Lanka</span>
+                  <span className="opacity-90">{formatAddress(hotel.address, hotel.city, 'Sri Lanka')}</span>
                 </li>
                 {hotel.contact_phone && (
                   <li className="mb-3 d-flex align-items-center">
