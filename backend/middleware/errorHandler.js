@@ -44,7 +44,7 @@ const errorHandler = (err, req, res, next) => {
   res.status(statusCode).json({
     success: false,
     message,
-    // Expose stack trace only in development
+    ...(err.errorCode && { code: err.errorCode }),
     ...(err.details && { errors: err.details }),
     ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
   });

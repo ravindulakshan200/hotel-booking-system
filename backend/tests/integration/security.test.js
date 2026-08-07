@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test-only-secret-with-more-than-32-characters";
-process.env.NODE_ENV = "test"; 
+process.env.NODE_ENV = "test";
 
 const pool = require('../../config/db');
 const createApp = require('../../app');
@@ -41,7 +41,7 @@ test("Security Regression Tests: True HTTP Flow", async (t) => {
     const body = await res.json();
     assert.equal(res.status, 200);
     assert.equal(body.success, true);
-    
+
     csrfTokenValue = body.data.csrfToken;
     assert.ok(csrfTokenValue, "JSON must contain csrfToken");
 
@@ -49,7 +49,7 @@ test("Security Regression Tests: True HTTP Flow", async (t) => {
     const csrfCookieHeader = setCookies.find(c => c.startsWith("csrfToken="));
     assert.ok(csrfCookieHeader, "Must set csrfToken cookie");
     assert.ok(csrfCookieHeader.includes("HttpOnly"), "csrfToken cookie must be HttpOnly");
-    
+
     // Extract the raw cookie for future requests
     csrfCookie = csrfCookieHeader.split(";")[0];
   });
@@ -73,7 +73,7 @@ test("Security Regression Tests: True HTTP Flow", async (t) => {
 
     const setCookies = res.headers.getSetCookie();
     assert.ok(setCookies.length >= 2, "Should set jwt and csrfToken cookies");
-    
+
     const jwtCookieHeader = setCookies.find(c => c.startsWith("jwt="));
     assert.ok(jwtCookieHeader, "JWT cookie must be present");
     assert.ok(jwtCookieHeader.includes("HttpOnly"), "JWT cookie must be HttpOnly");
@@ -88,7 +88,7 @@ test("Security Regression Tests: True HTTP Flow", async (t) => {
 
     // Capture cookies for authenticated requests
     sessionCookies = setCookies.map(c => c.split(";")[0]);
-    
+
     // Optionally update our token memory if the backend rotated it
     if (body.data.csrfToken) {
       csrfTokenValue = body.data.csrfToken;
@@ -154,7 +154,9 @@ test("Security Regression Tests: True HTTP Flow", async (t) => {
       },
       body: JSON.stringify({ first_name: "Sec Failed" })
     });
+    const body = await res.json();
     assert.equal(res.status, 403);
+    assert.equal(body.code, "ERR_CSRF_INVALID");
   });
 
   await t.test("missing CSRF cookie fails mutation", async () => {
@@ -167,7 +169,9 @@ test("Security Regression Tests: True HTTP Flow", async (t) => {
       },
       body: JSON.stringify({ first_name: "Sec Failed" })
     });
+    const body = await res.json();
     assert.equal(res.status, 403);
+    assert.equal(body.code, "ERR_CSRF_INVALID");
   });
 
   await t.test("mismatched CSRF pair fails mutation", async () => {
@@ -180,7 +184,9 @@ test("Security Regression Tests: True HTTP Flow", async (t) => {
       },
       body: JSON.stringify({ first_name: "Sec Failed" })
     });
+    const body = await res.json();
     assert.equal(res.status, 403);
+    assert.equal(body.code, "ERR_CSRF_INVALID");
   });
 
   await t.test("logout clears both cookies", async () => {
@@ -195,7 +201,7 @@ test("Security Regression Tests: True HTTP Flow", async (t) => {
     assert.equal(res.status, 200);
 
     const setCookies = res.headers.getSetCookie();
-    
+
     const jwtCookieHeader = setCookies.find(c => c.startsWith("jwt="));
     assert.ok(jwtCookieHeader.includes("Max-Age=0") || jwtCookieHeader.includes("Expires="), "jwt must be cleared");
     assert.ok(jwtCookieHeader.includes("Path=/"), "jwt clear must have Path=/");
@@ -212,12 +218,34 @@ test("Security Regression Tests: True HTTP Flow", async (t) => {
 
     const res = await fetch(`${baseUrl}/api/v1/auth/csrf-token`, { method: "GET" });
     const setCookies = res.headers.getSetCookie();
-    
+
     // revert
     process.env.NODE_ENV = oldEnv;
 
     const csrfCookieHeader = setCookies.find(c => c.startsWith("csrfToken="));
     assert.ok(csrfCookieHeader.includes("Secure"), "In production, cookie must be Secure");
     assert.ok(csrfCookieHeader.includes("SameSite=none") || csrfCookieHeader.includes("SameSite=None"), "In production, cookie must be SameSite=None");
+  });
+
+  await t.test("production error handler only exposes allowed stable code and does not leak internal details", async () => {
+    // temporarily set production
+    const oldEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+
+    const res = await fetch(`${baseUrl}/api/v1/auth/profile`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Cookie": sessionCookies.join("; ")
+      },
+      body: JSON.stringify({ first_name: "Sec Failed" })
+    });
+    const body = await res.json();
+    assert.equal(res.status, 403);
+    assert.equal(body.code, "ERR_CSRF_INVALID", "Stable code must be exposed in production");
+    assert.equal(body.stack, undefined, "Stack trace must NOT be exposed in production");
+
+    // revert
+    process.env.NODE_ENV = oldEnv;
   });
 });

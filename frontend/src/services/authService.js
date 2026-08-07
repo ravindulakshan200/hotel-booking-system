@@ -34,8 +34,12 @@ export const resendVerification = async (email) => {
 };
 
 export const logout = async () => {
-  const response = await api.post('/auth/logout');
-  return response;
+  try {
+    const response = await api.post('/auth/logout');
+    return response;
+  } finally {
+    setCsrfToken(null);
+  }
 };
 
 export const getProfile = async () => {

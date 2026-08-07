@@ -18,11 +18,11 @@ const csrfMiddleware = (req, res, next) => {
   const headerToken = req.headers["x-csrf-token"];
 
   if (!cookieToken || !headerToken) {
-    return next(new HttpError(403, "Invalid or missing CSRF token."));
+    return next(new HttpError(403, "Invalid or missing CSRF token.", undefined, "ERR_CSRF_INVALID"));
   }
 
   if (cookieToken.length !== headerToken.length || !crypto.timingSafeEqual(Buffer.from(cookieToken), Buffer.from(headerToken))) {
-    return next(new HttpError(403, "Invalid or missing CSRF token."));
+    return next(new HttpError(403, "Invalid or missing CSRF token.", undefined, "ERR_CSRF_INVALID"));
   }
 
   next();
